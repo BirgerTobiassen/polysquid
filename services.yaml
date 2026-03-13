@@ -2,7 +2,7 @@ services:
 - name: "TEST1"
   port: 3131 # Port number to listen on
   enabled: true  # Set to true to enable this service
-  on_calendar: "Mon..Fri 08:00..18:00"  # Optional: systemd OnCalendar format for start/stop timers (e.g., "Mon..Fri 08:00..18:00" for weekdays 8am-6pm)
+  on_calendar: "Mon..Fri 08:00..20:00"  # Optional: systemd OnCalendar format for start/stop timers (e.g., "Mon..Fri 08:00..18:00" for weekdays 8am-6pm)
   allowed_ips:  # Optional: List of source IPs/CIDRs allowed to connect (default: all IPs allowed)
     - 192.168.1.0/24
     - 10.0.0.1
