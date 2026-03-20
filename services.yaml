@@ -22,8 +22,6 @@ services:
     - shared.lists.testlist1
   blacklist:
     - shared.lists.blacklist1
-    - .phishing.com
-    - .scam.net
     - shared.lists.testlist2
 
 - name: "TEST3"
@@ -40,10 +38,11 @@ shared:
       - .bad.com
       - .malware.net
     whitelist2:
-      - .good.com
-      - .secure.net
+      - .nrk.n0
+      - .uit.no
+      - .tv2.no
+      - .vg.no
     testlist1:
-      - .nrk.no
       - .fremover.no
       - .lwcdn.com
       - .acdn.no
