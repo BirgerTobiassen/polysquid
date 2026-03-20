@@ -46,6 +46,12 @@ shared:
       - .nrk.no
       - .fremover.no
       - .lwcdn.com
+      - .acdn.no
+      - .api.no
+      - .doubleclick.net
+      - .brandmetrics.com
+      - .lwadm.com
+      - .e-pages.dk
     testlist2:
       - .dagbladet.no
       - .nordlys.no
