@@ -38,7 +38,7 @@ shared:
       - .bad.com
       - .malware.net
     whitelist2:
-      - .nrk.n0
+      - .nrk.no
       - .uit.no
       - .tv2.no
       - .vg.no

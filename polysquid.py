@@ -532,7 +532,7 @@ def main():
             # Signal running container to reload config without restart (squid -k reconfigure).
             r = run(SUDO + ["systemctl", "is-active", "--quiet", f"squid-{safe_name}.service"])
             if r.returncode == 0:
-                run(SUDO + ["docker", "kill", "-s", "HUP", f"squid_{safe_name}"], ignore_err=True)
+                run(SUDO + ["/usr/bin/docker", "kill", "-s", "HUP", f"squid_{safe_name}"], ignore_err=True)
                 log.info(f"Config changed for {name}: sent SIGHUP to reload")
 
         # Systemd + logrotate files

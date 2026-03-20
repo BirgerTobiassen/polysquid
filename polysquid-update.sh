@@ -28,7 +28,7 @@ new_hash=$(git rev-parse HEAD:services.yaml 2>/dev/null || echo "")
 # If services.yaml changed, run the trusted executor against repo data.
 if [ "$old_hash" != "$new_hash" ] && [ -n "$new_hash" ]; then
     echo "$(date): services.yaml updated (old: $old_hash, new: $new_hash), running trusted polysquid executor" | tee -a "$LOG_FILE"
-    if python3 "$TRUSTED_EXEC" --config "$REPO_DIR/services.yaml" --base-dir "$REPO_DIR" 2>&1 | tee -a "$LOG_FILE"; then
+    if /usr/bin/python3 "$TRUSTED_EXEC" --config "$REPO_DIR/services.yaml" --base-dir "$REPO_DIR" 2>&1 | tee -a "$LOG_FILE"; then
         echo "$(date): trusted polysquid executor completed successfully" | tee -a "$LOG_FILE"
     else
         echo "$(date): trusted polysquid executor failed with exit code $?" | tee -a "$LOG_FILE"
