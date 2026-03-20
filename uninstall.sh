@@ -7,7 +7,9 @@
 set -euo pipefail
 
 SERVICE_NAME="polysquid-update"
-UPDATE_SCRIPT="/usr/local/bin/polysquid-update.sh"
+TRUSTED_DIR="/usr/local/lib/polysquid"
+TRUSTED_EXEC="${TRUSTED_DIR}/polysquid.py"
+TRUSTED_UPDATE="${TRUSTED_DIR}/polysquid-update.sh"
 REPO_DIR="/opt/polysquid"
 UPDATE_LOG="/var/log/polysquid-update.log"
 PURGE=false
@@ -44,8 +46,10 @@ echo "Removing logrotate entries..."
 rm -f /etc/logrotate.d/polysquid-update
 rm -f /etc/logrotate.d/squid-*
 
-echo "Removing update helper script..."
-rm -f "$UPDATE_SCRIPT"
+echo "Removing trusted updater and executor..."
+rm -f "$TRUSTED_UPDATE"
+rm -f "$TRUSTED_EXEC"
+rmdir "$TRUSTED_DIR" 2>/dev/null || true
 
 echo "Removing running squid containers (name prefix: squid_)..."
 if command -v docker >/dev/null 2>&1; then

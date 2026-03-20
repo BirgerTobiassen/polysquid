@@ -10,7 +10,9 @@ set -e
 REPO_DIR="/opt/polysquid"
 REPO_URL="git@github.com:BirgerTobiassen/Polysquid.git"
 SERVICE_NAME="polysquid-update"
-UPDATE_SCRIPT="/usr/local/bin/polysquid-update.sh"
+TRUSTED_DIR="/usr/local/lib/polysquid"
+TRUSTED_EXEC="${TRUSTED_DIR}/polysquid.py"
+TRUSTED_UPDATE="${TRUSTED_DIR}/polysquid-update.sh"
 TIMER_INTERVAL="*-*-* *:0/5:00"  # Every 5 minutes
 
 # Check if running as root
@@ -30,9 +32,11 @@ else
 fi
 chown -R root:root "$REPO_DIR"
 
-# Copy the update script and set mode
-cp "$REPO_DIR/polysquid-update.sh" "$UPDATE_SCRIPT"
-chmod +x "$UPDATE_SCRIPT"
+# Install a trusted, root-owned executor outside the git working tree.
+# This prevents code in future git pulls from being executed automatically.
+mkdir -p "$TRUSTED_DIR"
+install -o root -g root -m 0755 "$REPO_DIR/polysquid.py" "$TRUSTED_EXEC"
+install -o root -g root -m 0755 "$REPO_DIR/polysquid-update.sh" "$TRUSTED_UPDATE"
 
 # Create systemd service
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
@@ -43,7 +47,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=$UPDATE_SCRIPT
+ExecStart=$TRUSTED_UPDATE
 User=root
 EOF
 
@@ -79,6 +83,8 @@ cat > "$LOGROTATE_CONF" << EOF
 EOF
 
 echo "Installation complete!"
-echo "The service will check for updates to services.yaml every 5 minutes and run polysquid.py if changes are found."
+echo "Trusted executor installed at: ${TRUSTED_EXEC}"
+echo "Trusted updater installed at: ${TRUSTED_UPDATE}"
+echo "The service will check for updates to services.yaml every 5 minutes and run the trusted executor if changes are found."
 echo "To check status: systemctl status ${SERVICE_NAME}.timer"
 echo "To view logs: journalctl -u ${SERVICE_NAME}.service or tail /var/log/polysquid-update.log"
