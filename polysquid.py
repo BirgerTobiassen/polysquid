@@ -248,6 +248,7 @@ def generate_squid_conf(conf_path: Path, allowed_ips: List[str], whitelist: List
 
     conf_path.write_text("\n".join(lines))
 def write_systemd_units(
+    base_dir: Path,
     systemd_dir: Path,
     conf_dir: Path,
     log_dir: Path,
@@ -353,7 +354,7 @@ WantedBy=multi-user.target
         stop_timer_file.write_text("\n".join(stop_timer_lines))
 
     # Logrotate: signal the container (USR1) to rotate logs
-    logrotate_content = f"""{BASE_DIR}/squid-clients/{safe_name}/logs/*.log {{
+    logrotate_content = f"""{base_dir}/squid-clients/{safe_name}/logs/*.log {{
     daily
     rotate 30
     compress
@@ -373,7 +374,7 @@ WantedBy=multi-user.target
 
 
 # Remove units for services no longer declared in services.yaml.
-def cleanup_removed_services(base_dir: Path, active_safe_names: List[str]):
+def cleanup_removed_services(active_safe_names: List[str]):
     systemd_path = Path("/etc/systemd/system")
     suffixes = [".service", "-start.timer", "-stop.timer", "-stop.service"]
 
@@ -466,6 +467,7 @@ def main():
 
         # Systemd + logrotate files
         service_file, start_timer_file, stop_service_file, stop_timer_file, logrotate_file = write_systemd_units(
+            base_dir=base_dir,
             systemd_dir=systemd_dir,
             conf_dir=conf_dir,
             log_dir=log_dir,
@@ -521,7 +523,7 @@ def main():
 
         active_safe_names.append(safe_name)
 
-    cleanup_removed_services(base_dir, active_safe_names)
+    cleanup_removed_services(active_safe_names)
     print("All entries processed.")
 
 

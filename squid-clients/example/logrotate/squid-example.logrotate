@@ -5,9 +5,9 @@
     missingok
     notifempty
     delaycompress
-    create 640 root adm
+    nocreate
     sharedscripts
     postrotate
-        systemctl kill -s SIGUSR1 squid-example.service >/dev/null 2>&1 || true
+        /usr/bin/docker kill -s USR1 squid_example >/dev/null 2>&1 || true
     endscript
 }

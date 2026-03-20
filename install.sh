@@ -56,10 +56,10 @@ TIMER_FILE="/etc/systemd/system/${SERVICE_NAME}.timer"
 cat > "$TIMER_FILE" << EOF
 [Unit]
 Description=Run polysquid update $TIMER_INTERVAL
-Persistent=true
 
 [Timer]
 OnCalendar=$TIMER_INTERVAL
+Persistent=true
 
 [Install]
 WantedBy=timers.target

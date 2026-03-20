@@ -68,9 +68,9 @@ sudo python3 polysquid.py
    sudo ./install.sh
    ```
 
-   This clones the repository to `/opt/polysquid`, sets up systemd services and timers for automated updates (checking every 5 minutes), copies the update script to `/usr/local/bin/`, and configures log rotation for update logs.
+  This clones the repository to `/opt/polysquid`, installs trusted root-owned runtime scripts to `/usr/local/lib/polysquid/`, sets up systemd services and timers for automated updates (checking every 5 minutes), and configures log rotation for update logs.
 
-3. Alternatively, run manually without installation:
+1. Alternatively, run manually without installation:
 
    ```bash
    python3 polysquid.py
@@ -173,7 +173,7 @@ shared:
 **Automated**:
 
 - The install script sets up a systemd timer that checks Git every 5 minutes for changes to `services.yaml`
-- Changes automatically trigger `polysquid.py` to redeploy affected services
+- Changes automatically trigger the trusted executor at `/usr/local/lib/polysquid/polysquid.py` to redeploy affected services
 - No downtime; containers are replaced seamlessly
 
 **Manual**:
@@ -263,7 +263,7 @@ polysquid/
 **Installed Locations** (when using install.sh):
 
 - Repository: `/opt/polysquid/`
-- Update script: `/usr/local/bin/polysquid-update.sh`
+- Trusted runtime scripts: `/usr/local/lib/polysquid/polysquid.py` and `/usr/local/lib/polysquid/polysquid-update.sh`
 - Systemd units: `/etc/systemd/system/squid-*.{service,timer}`
 - Log rotation: `/etc/logrotate.d/squid-*` and `/etc/logrotate.d/polysquid-update`
 - Update logs: `/var/log/polysquid-update.log`
