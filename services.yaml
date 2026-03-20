@@ -54,7 +54,6 @@ shared:
       - .e-pages.dk
     testlist2:
       - .dagbladet.no
-      - .nordlys.no
   calendars:
     work_hours: "Mon..Fri 08:00..18:00"
     off_hours: "Mon..Fri 18:00..08:00, Sat..Sun 00:00..23:59:59"
