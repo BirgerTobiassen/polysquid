@@ -6,6 +6,7 @@ Requires=docker.service
 [Service]
 Type=simple
 Restart=no
+TimeoutStopSec=30
 # Ensure stale containers are removed before starting
 ExecStartPre=-/usr/bin/docker rm -f squid_example
 ExecStart=/usr/bin/docker run \
@@ -16,5 +17,5 @@ ExecStart=/usr/bin/docker run \
   -p 3128:3128 \
   ubuntu/squid:6.13-25.04_beta
 
-ExecStop=/usr/bin/docker stop squid_example
+ExecStop=/usr/bin/docker stop -t 20 squid_example
 ExecStopPost=-/usr/bin/docker rm -f squid_example

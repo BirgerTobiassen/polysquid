@@ -10,6 +10,7 @@ set -e
 REPO_DIR="/opt/polysquid"
 REPO_URL="git@github.com:BirgerTobiassen/Polysquid.git"
 SERVICE_NAME="polysquid-update"
+RECONCILE_SERVICE_NAME="polysquid-reconcile"
 TRUSTED_DIR="/usr/local/lib/polysquid"
 TRUSTED_EXEC="${TRUSTED_DIR}/polysquid.py"
 TRUSTED_UPDATE="${TRUSTED_DIR}/polysquid-update.sh"
@@ -51,6 +52,23 @@ ExecStart=$TRUSTED_UPDATE
 User=root
 EOF
 
+# Create boot reconcile service
+RECONCILE_SERVICE_FILE="/etc/systemd/system/${RECONCILE_SERVICE_NAME}.service"
+cat > "$RECONCILE_SERVICE_FILE" << EOF
+[Unit]
+Description=Polysquid Reconcile Service State On Boot
+After=network-online.target docker.service
+Wants=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 $TRUSTED_EXEC --config $REPO_DIR/services.yaml --base-dir $REPO_DIR
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 # Create systemd timer
 TIMER_FILE="/etc/systemd/system/${SERVICE_NAME}.timer"
 cat > "$TIMER_FILE" << EOF
@@ -68,6 +86,7 @@ EOF
 # Reload systemd and enable timer
 systemctl daemon-reload
 systemctl enable --now "${SERVICE_NAME}.timer"
+systemctl enable "${RECONCILE_SERVICE_NAME}.service"
 
 # Create logrotate config for the update log
 LOGROTATE_CONF="/etc/logrotate.d/polysquid-update"
@@ -88,6 +107,7 @@ python3 "$TRUSTED_EXEC" --config "$REPO_DIR/services.yaml" --base-dir "$REPO_DIR
 echo "Installation complete!"
 echo "Trusted executor installed at: ${TRUSTED_EXEC}"
 echo "Trusted updater installed at: ${TRUSTED_UPDATE}"
+echo "Boot reconcile service enabled: ${RECONCILE_SERVICE_NAME}.service"
 echo "Enabled services have been reconciled and started where applicable."
 echo "The service will check for updates to services.yaml every 5 minutes and run the trusted executor if changes are found."
 echo "To check status: systemctl status ${SERVICE_NAME}.timer"

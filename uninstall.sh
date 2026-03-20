@@ -7,6 +7,7 @@
 set -euo pipefail
 
 SERVICE_NAME="polysquid-update"
+RECONCILE_SERVICE_NAME="polysquid-reconcile"
 TRUSTED_DIR="/usr/local/lib/polysquid"
 TRUSTED_EXEC="${TRUSTED_DIR}/polysquid.py"
 TRUSTED_UPDATE="${TRUSTED_DIR}/polysquid-update.sh"
@@ -27,6 +28,7 @@ fi
 echo "Stopping and disabling update timer/service..."
 systemctl disable --now "${SERVICE_NAME}.timer" 2>/dev/null || true
 systemctl disable --now "${SERVICE_NAME}.service" 2>/dev/null || true
+systemctl disable --now "${RECONCILE_SERVICE_NAME}.service" 2>/dev/null || true
 
 echo "Stopping and disabling generated squid services/timers..."
 for unit in /etc/systemd/system/squid-*.service /etc/systemd/system/squid-*.timer; do
@@ -39,6 +41,7 @@ done
 echo "Removing generated systemd unit links/files..."
 rm -f /etc/systemd/system/${SERVICE_NAME}.service
 rm -f /etc/systemd/system/${SERVICE_NAME}.timer
+rm -f /etc/systemd/system/${RECONCILE_SERVICE_NAME}.service
 rm -f /etc/systemd/system/squid-*.service
 rm -f /etc/systemd/system/squid-*.timer
 

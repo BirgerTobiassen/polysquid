@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+from datetime import datetime
 import ipaddress
 import logging
 import os
@@ -171,6 +172,80 @@ def parse_calendar_ranges(calendar: str) -> Tuple[List[str], List[str]]:
     return start_specs, stop_specs
 
 
+def _parse_clock(value: str):
+    for fmt in ("%H:%M:%S", "%H:%M"):
+        try:
+            return datetime.strptime(value, fmt).time()
+        except ValueError:
+            continue
+    return None
+
+
+def _expand_days(days_spec: str) -> List[int]:
+    day_map = {"Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4, "Sat": 5, "Sun": 6}
+    if not days_spec:
+        return list(range(7))
+    if ".." in days_spec:
+        start_name, end_name = [d.strip()[:3] for d in days_spec.split("..", 1)]
+        if start_name not in day_map or end_name not in day_map:
+            return []
+        start_idx = day_map[start_name]
+        end_idx = day_map[end_name]
+        if start_idx <= end_idx:
+            return list(range(start_idx, end_idx + 1))
+        return list(range(start_idx, 7)) + list(range(0, end_idx + 1))
+    single = days_spec.strip()[:3]
+    if single not in day_map:
+        return []
+    return [day_map[single]]
+
+
+def is_service_active_now(calendar: str) -> bool:
+    """
+    Return True when current local time falls inside any active calendar segment.
+    Supports segments in the same grammar as parse_calendar_ranges.
+    """
+    if not calendar:
+        return True
+
+    now = datetime.now()
+    now_day = now.weekday()  # Mon=0 ... Sun=6
+    now_time = now.time()
+
+    segments = [seg.strip() for seg in re.split(r"[;,]", calendar) if seg.strip()]
+    for seg in segments:
+        parts = seg.split()
+        if len(parts) == 2:
+            days_spec, timerange = parts
+        elif len(parts) == 1:
+            days_spec, timerange = "", parts[0]
+        else:
+            continue
+
+        if ".." not in timerange:
+            continue
+
+        start_s, end_s = [t.strip() for t in timerange.split("..", 1)]
+        start_t = _parse_clock(start_s)
+        end_t = _parse_clock(end_s)
+        if not start_t or not end_t:
+            continue
+
+        active_days = _expand_days(days_spec)
+        if not active_days:
+            continue
+
+        if start_t <= end_t:
+            if now_day in active_days and start_t <= now_time < end_t:
+                return True
+        else:
+            previous_day = (now_day - 1) % 7
+            if (now_day in active_days and now_time >= start_t) or (previous_day in active_days and now_time < end_t):
+                return True
+
+    return False
+
+
 # Normalize a raw service entry into the structure the rest of the script expects.
 def validate_service(service: Dict, shared: Dict) -> Dict:
     required = ["name", "port", "enabled"]
@@ -280,6 +355,8 @@ Requires=docker.service
 [Service]
 Type=simple
 Restart=no
+# Keep stop bounded so timer-driven shutdowns do not hang indefinitely.
+TimeoutStopSec=30
 # Ensure stale containers are removed before starting
 ExecStartPre=-/usr/bin/docker rm -f squid_{safe_name}
 ExecStart=/usr/bin/docker run \\
@@ -289,7 +366,7 @@ ExecStart=/usr/bin/docker run \\
   -v {cache_dir}:/var/spool/squid \\
   -p {port}:3128 \\
   {image}
-ExecStop=/usr/bin/docker stop squid_{safe_name}
+ExecStop=/usr/bin/docker stop -t 20 squid_{safe_name}
 ExecStopPost=-/usr/bin/docker rm -f squid_{safe_name}
 """
     service_file.write_text(service_content)
@@ -310,7 +387,6 @@ ExecStopPost=-/usr/bin/docker rm -f squid_{safe_name}
         else:
             log.warning(f"Invalid calendar '{calendar}', skipping timers for {name}")
         start_timer_lines += [
-            "Persistent=true",
             "AccuracySec=1sec",
             f"Unit=squid-{safe_name}.service",
             "",
@@ -343,7 +419,6 @@ WantedBy=multi-user.target
         else:
             log.warning(f"Invalid calendar '{calendar}', skipping stop timer for {name}")
         stop_timer_lines += [
-            "Persistent=true",
             "AccuracySec=1sec",
             f"Unit=squid-{safe_name}-stop.service",
             "",
@@ -507,6 +582,12 @@ def main():
                     run(SUDO + ["systemctl", "enable", "--now", f"squid-{safe_name}-start.timer"], check=False)
                 if stop_timer_file.exists():
                     run(SUDO + ["systemctl", "enable", "--now", f"squid-{safe_name}-stop.timer"], check=False)
+
+                # Ensure correct state now (install/run time), independent of timer catch-up behavior.
+                if is_service_active_now(calendar):
+                    run(SUDO + ["systemctl", "start", f"squid-{safe_name}.service"], check=False)
+                else:
+                    run(SUDO + ["systemctl", "stop", f"squid-{safe_name}.service"], ignore_err=True)
             else:
                 run(SUDO + ["ln", "-s", str(logrotate_file), f"/etc/logrotate.d/squid-{safe_name}"], ignore_err=True)
                 run(SUDO + ["systemctl", "daemon-reload"], check=False)

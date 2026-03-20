@@ -175,6 +175,7 @@ shared:
 
 - The install script sets up a systemd timer that checks Git every 5 minutes for changes to `services.yaml`
 - Changes automatically trigger the trusted executor at `/usr/local/lib/polysquid/polysquid.py` to redeploy affected services
+- A boot reconcile service restores the correct service state after reboot (services start if current time is inside an enabled window)
 - No downtime; containers are replaced seamlessly
 
 **Manual**:
@@ -265,6 +266,7 @@ polysquid/
 
 - Repository: `/opt/polysquid/`
 - Trusted runtime scripts: `/usr/local/lib/polysquid/polysquid.py` and `/usr/local/lib/polysquid/polysquid-update.sh`
+- Boot reconcile service: `/etc/systemd/system/polysquid-reconcile.service`
 - Systemd units: `/etc/systemd/system/squid-*.{service,timer}`
 - Log rotation: `/etc/logrotate.d/squid-*` and `/etc/logrotate.d/polysquid-update`
 - Update logs: `/var/log/polysquid-update.log`
