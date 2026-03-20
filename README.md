@@ -26,6 +26,7 @@ This sets up:
 - Systemd timer checking for updates every 5 minutes
 - Automated redeployment on `services.yaml` changes
 - Log rotation for update logs
+- An initial reconciliation run so enabled services start immediately after install
 
 ### 2. Configure
 
@@ -68,7 +69,7 @@ sudo python3 polysquid.py
    sudo ./install.sh
    ```
 
-  This clones the repository to `/opt/polysquid`, installs trusted root-owned runtime scripts to `/usr/local/lib/polysquid/`, sets up systemd services and timers for automated updates (checking every 5 minutes), and configures log rotation for update logs.
+  This clones the repository to `/opt/polysquid`, installs trusted root-owned runtime scripts to `/usr/local/lib/polysquid/`, sets up systemd services and timers for automated updates (checking every 5 minutes), configures log rotation for update logs, and performs an initial reconciliation run so enabled services start immediately.
 
 1. Alternatively, run manually without installation:
 

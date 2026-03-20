@@ -82,9 +82,13 @@ cat > "$LOGROTATE_CONF" << EOF
 }
 EOF
 
+# Perform an initial reconciliation so enabled services start immediately after install.
+python3 "$TRUSTED_EXEC" --config "$REPO_DIR/services.yaml" --base-dir "$REPO_DIR"
+
 echo "Installation complete!"
 echo "Trusted executor installed at: ${TRUSTED_EXEC}"
 echo "Trusted updater installed at: ${TRUSTED_UPDATE}"
+echo "Enabled services have been reconciled and started where applicable."
 echo "The service will check for updates to services.yaml every 5 minutes and run the trusted executor if changes are found."
 echo "To check status: systemctl status ${SERVICE_NAME}.timer"
 echo "To view logs: journalctl -u ${SERVICE_NAME}.service or tail /var/log/polysquid-update.log"
