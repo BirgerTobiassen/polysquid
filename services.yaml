@@ -45,7 +45,7 @@ shared:
     testlist1:
       - .nrk.no
       - .fremover.no
-      - .lw-amedia-cf.lwcdn.com
+      - .lwcdn.com
     testlist2:
       - .dagbladet.no
       - .nordlys.no
