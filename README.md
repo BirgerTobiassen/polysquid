@@ -8,7 +8,7 @@ Polysquid is a Python-based tool for managing multiple Squid proxy services usin
 - **Docker Isolation**: Each Squid service runs in its own container with isolated configuration, logs, and cache.
 - **Systemd Integration**: Automatically creates services, timers for schedule-based start/stop, and log rotation configs.
 - **Advanced Scheduling**: Schedule services by working hours, day of week, or custom calendar ranges with automatic shutdown.
-- **Flexible Access Control**: Combine IP/CIDR whitelisting, domain blacklists, and domain whitelists with convenient shared configuration support.
+- **Flexible Access Control**: Combine IP/CIDR whitelisting and domain whitelists with convenient shared configuration support.
 - **Automated Updates**: Monitors Git for `services.yaml` changes and redeploys affected services without downtime.
 - **Validation**: Comprehensive input validation with detailed logging of issues.
 
@@ -41,9 +41,9 @@ services:
     allowed_ips:
       - 192.168.1.0/24
       - 10.0.0.0/8
-    blacklist:
-      - .ads.com
-      - .malware.net
+    whitelist:
+      - .example.com
+      - .trusted.org
 ```
 
 ### 3. Deploy
@@ -91,7 +91,6 @@ services:
     on_calendar: "Mon..Fri 09:00..17:00"  # Optional scheduling
     allowed_ips: ["192.168.1.0/24", "10.0.0.1"]  # Optional IP restrictions
     whitelist: ["example.com", "trusted.org"]  # Optional domain whitelist
-    blacklist: ["blocked.com"]  # Optional domain blacklist
 ```
 
 **Required fields**: `name`, `port`, `enabled`
@@ -100,8 +99,7 @@ services:
 
 - `on_calendar`: Systemd calendar format for scheduled start/stop. Format: `"DAY HOUR1..HOUR2"` (e.g., `"Mon..Fri 08:00..18:00"`)
 - `allowed_ips`: List of source IP addresses or CIDR ranges allowed to connect
-- `whitelist`: List of destination domains allowed (takes precedence over blacklist)
-- `blacklist`: List of destination domains denied
+- `whitelist`: List of destination domains allowed (deny-by-default if present, allow-by-default if empty)
 
 ### Advanced: Shared Configurations
 
@@ -137,8 +135,8 @@ shared:
 
 **Precedence**:
 
-1. If whitelist is defined: only whitelisted domains are allowed (blacklist is ignored)
-2. If no whitelist: blacklisted domains are denied, others allowed
+1. If whitelist is defined: only whitelisted domains are allowed, everything else is denied (deny-by-default)
+2. If no whitelist: all domains from allowed_ips are allowed (allow-by-default)
 3. Source IP restrictions apply to all traffic
 
 **Example**: Restrictive policy (whitelist + IP restrictions)
@@ -162,9 +160,9 @@ shared:
   port: 3129
   enabled: true
   allowed_ips: ["0.0.0.0/0"]  # Any source (default if omitted)
-  blacklist:
-    - .malware.net
-    - .phishing.com
+  whitelist:
+    - .trusted.com
+    - .example.org
 ```
 
 ## Usage
@@ -307,7 +305,7 @@ docker ps --filter "name=squid_" --format "table {{.Names}}\t{{.Image}}\t{{.Port
 - Domains should include the leading dot for subdomain matching: `.example.com` matches `proxy.example.com` and `example.com`
 - Exact domains without dot: `example.com` matches only `example.com`
 - Whitelist takes precedence: if whitelist is defined, any non-whitelisted traffic is denied
-- Blacklist is bypassed by whitelist rules
+
 
 Example:
 
@@ -334,7 +332,7 @@ Example:
 - Docker daemon access is equivalent to root privileges
 - Enforce strong IP restrictions at the proxy level when needed
 - Monitor logs for suspicious access patterns
-- Use domain whitelists (not blacklists) for high-security environments
+- Domain whitelists enforce deny-by-default, providing the strongest security posture
 - Share `services.yaml` with appropriate Git access controls
 
 ## Troubleshooting

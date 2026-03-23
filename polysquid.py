@@ -244,9 +244,8 @@ def validate_service(service: Dict, shared: Dict) -> Dict:
     enabled = bool(service["enabled"])
     # Allowed IPs
     allowed_ips = validate_allowed_ips(service.get("allowed_ips", []))
-    # Whitelist/Blacklist with shared lists expanded
+    # Whitelist with shared lists expanded
     whitelist = resolve_shared_lists(service.get("whitelist", []), shared)
-    blacklist = resolve_shared_lists(service.get("blacklist", []), shared)
 
     # Calendar (resolve shared and parse)
     calendar_raw = service.get("on_calendar", "")
@@ -260,15 +259,14 @@ def validate_service(service: Dict, shared: Dict) -> Dict:
         "calendar": calendar_resolved,
         "allowed_ips": allowed_ips,
         "whitelist": whitelist,
-        "blacklist": blacklist,
     }
 
 
-def generate_squid_conf(conf_path: Path, allowed_ips: List[str], whitelist: List[str], blacklist: List[str]) -> bool:
+def generate_squid_conf(conf_path: Path, allowed_ips: List[str], whitelist: List[str]) -> bool:
     """
-    Build squid.conf with proper ordering:
-    - If whitelist provided: only allow those domains (whitelist takes precedence over blacklist).
-    - Deny blacklist after whitelist allow so whitelist overrides.
+    Build squid.conf with deny-by-default access control:
+    - If whitelist provided: only allow those domains, deny everything else.
+    - If no whitelist: allow all from allowed_ips, deny everything else.
     - Combine source and destination ACLs so source restrictions aren't bypassed.
     - If no allowed_ips given, allow all (compatibility with original script).
     """
@@ -281,22 +279,14 @@ def generate_squid_conf(conf_path: Path, allowed_ips: List[str], whitelist: List
         lines.append("acl allowed_ips src all")
     if whitelist:
         lines.append("acl whitelist dstdomain " + " ".join(whitelist))
-    if blacklist:
-        lines.append("acl blacklist dstdomain " + " ".join(blacklist))
     lines.append("")  # spacer
-    # Access rules
+    # Access rules: deny-by-default
     if whitelist:
-        # Allow whitelisted domains only, restricted by source
+        # Allow only whitelisted destinations, restricted by source
         lines.append("# Allow only whitelisted destinations (sources restricted via allowed_ips)")
         lines.append("http_access allow allowed_ips whitelist")
-        if blacklist:
-            # Whitelist precedence over blacklist: deny blacklist after the allow above
-            lines.append("http_access deny blacklist")
-        # No broad allow here; non-whitelisted destinations will be denied by the final deny all
     else:
-        # No whitelist: deny blacklist first, then allow by source
-        if blacklist:
-            lines.append("http_access deny blacklist")
+        # No whitelist: allow all from allowed_ips
         lines.append("http_access allow allowed_ips")
     lines.append("http_access deny all")
 
@@ -509,7 +499,6 @@ def main():
         calendar = validated["calendar"]
         allowed_ips = validated["allowed_ips"]
         whitelist = validated["whitelist"]
-        blacklist = validated["blacklist"]
         safe_name = safe_service_name(name, fallback=f"squid_{port}")
 
         # Layout
@@ -527,7 +516,7 @@ def main():
         run(SUDO + ["chown", "-R", "13:13", str(cache_dir)], ignore_err=True)
 
         # squid.conf
-        conf_changed = generate_squid_conf(conf_dir / "squid.conf", allowed_ips, whitelist, blacklist)
+        conf_changed = generate_squid_conf(conf_dir / "squid.conf", allowed_ips, whitelist)
         if conf_changed:
             # Signal running container to reload config without restart (squid -k reconfigure).
             r = run(SUDO + ["systemctl", "is-active", "--quiet", f"squid-{safe_name}.service"])
