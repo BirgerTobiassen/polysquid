@@ -1,4 +1,4 @@
-FROM ubuntu/python:3.11-22.04_edge
+FROM ubuntu/python:3.12-24.04_stable
 
 # Set working directory
 WORKDIR /app
