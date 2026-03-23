@@ -1,6 +1,7 @@
 services:
 - name: "Self service"
   port: 3128 # Port number to listen on
+  use_tls: true  # Optional: Use TLS on this proxy listener (https_port)
   enabled: true  # Set to true to enable this service
   allowed_ips:  # Optional: List of source IPs/CIDRs allowed to connect (default: all IPs allowed)
     - 192.168.1.0/24
@@ -11,6 +12,7 @@ services:
 
 - name: "TEST1"
   port: 3129 # Port number to listen on
+  use_tls: false  # Optional: Use TLS on this proxy listener (https_port)
   enabled: true  # Set to true to enable this service
   on_calendar: "Mon..Fri 08:00..21:00"  # Optional: systemd OnCalendar format for start/stop timers (e.g., "Mon..Fri 08:00..18:00" for weekdays 8am-6pm)
   allowed_ips:  # Optional: List of source IPs/CIDRs allowed to connect (default: all IPs allowed)
@@ -22,14 +24,16 @@ services:
 
 - name: "TEST2"
   port: 3130
+  use_tls: true
   enabled: true
   whitelist:
     - shared.lists.whitelist1
     - shared.lists.whitelist2
-    - shared.lists.testlist1
+    - shared.lists.fremover_list
 
 - name: "TEST3"
   port: 3131
+  use_tls: false
   enabled: true  # This service is currently enabled
   on_calendar: shared.calendars.off_hours  # Use shared calendar for off hours
 
@@ -43,7 +47,7 @@ shared:
       - .uit.no
       - .tv2.no
       - .vg.no
-    testlist1:
+    fremover_list:
       - .fremover.no
       - .lwcdn.com
       - .acdn.no
