@@ -1,0 +1,15 @@
+.git
+.gitignore
+*.pyc
+__pycache__
+.pytest_cache
+.coverage
+*.egg-info
+dist
+build
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store

@@ -1,0 +1,30 @@
+[Unit]
+Description=Self-Service Access Portal (Flask/Python)
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+
+# Ensure stale container is removed before starting
+ExecStartPre=-/usr/bin/docker rm -f polysquid_self_service
+
+# Start Flask app container
+ExecStart=/usr/bin/docker run \
+  --name polysquid_self_service \
+  -v /opt/polysquid/self-service/requests:/shared/requests \
+  -p 127.0.0.1:5000:5000 \
+  -e REQUESTS_DIR=/shared/requests \
+  -e REQUEST_PORT=5000 \
+  -e LOG_LEVEL=INFO \
+  polysquid-self-service:latest
+
+# Stop the container gracefully
+ExecStop=/usr/bin/docker stop -t 20 polysquid_self_service
+ExecStopPost=-/usr/bin/docker rm -f polysquid_self_service
+
+[Install]
+WantedBy=multi-user.target
