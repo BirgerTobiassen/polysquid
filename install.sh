@@ -4,7 +4,7 @@
 # This script sets up a systemd service that periodically checks for updates to services.yaml
 # and runs polysquid.py when changes are detected.
 
-set -e
+set -euo pipefail
 
 # Configuration
 REPO_DIR="/opt/polysquid"

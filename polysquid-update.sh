@@ -16,7 +16,7 @@ old_hash=$(git rev-parse HEAD:services.yaml 2>/dev/null || echo "")
 
 # Pull latest changes
 if git pull --quiet; then
-    echo "$(date): Git pull successful"
+    echo "$(date): Git pull successful" | tee -a "$LOG_FILE"
 else
     echo "$(date): Failed to pull from Git" | tee -a "$LOG_FILE"
     exit 1
@@ -34,5 +34,5 @@ if [ "$old_hash" != "$new_hash" ] && [ -n "$new_hash" ]; then
         echo "$(date): trusted polysquid executor failed with exit code $?" | tee -a "$LOG_FILE"
     fi
 else
-    echo "$(date): No changes to services.yaml (hash: $new_hash)"
+    echo "$(date): No changes to services.yaml (hash: $new_hash)" | tee -a "$LOG_FILE"
 fi
