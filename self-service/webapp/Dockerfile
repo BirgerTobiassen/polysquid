@@ -3,6 +3,9 @@ FROM ubuntu/python:3.12-24.04_stable
 # Set working directory
 WORKDIR /app
 
+# Install shell and build essentials
+RUN apt-get update && apt-get install -y --no-install-recommends bash ca-certificates && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
