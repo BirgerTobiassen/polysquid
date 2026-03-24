@@ -2,6 +2,7 @@
 Description=Self-Service Access Portal (Flask/Python)
 After=docker.service network-online.target
 Requires=docker.service
+Wants=network-online.target
 
 [Service]
 Type=simple

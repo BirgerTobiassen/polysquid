@@ -1,8 +1,8 @@
 [Unit]
 Description=Self-Service HTTPS Reverse Proxy (Nginx)
 After=docker.service network-online.target polysquid-self-service.service
-Requires=docker.service
-Wants=polysquid-self-service.service
+Requires=docker.service polysquid-self-service.service
+Wants=network-online.target
 
 [Service]
 Type=simple
