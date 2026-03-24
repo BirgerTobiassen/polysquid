@@ -12,6 +12,63 @@ Polysquid is a Python-based tool for managing multiple Squid proxy services usin
 - **Automated Updates**: Monitors Git for `services.yaml` changes and redeploys affected services without downtime.
 - **Validation**: Comprehensive input validation with detailed logging of issues.
 
+## Prerequisites
+
+### TLS Certificates (Let's Encrypt)
+
+Required before running `install.sh` if any service uses `use_tls: true` or you are deploying the self-service portal.
+
+Polysquid components that use TLS share certificate files from:
+
+- `/etc/polysquid/certs/fullchain.pem`
+- `/etc/polysquid/certs/privkey.pem`
+
+Choose the validation method that matches your environment.
+
+#### Option A: HTTP-01 (port 80 must be reachable from the internet)
+
+```bash
+sudo apt update
+sudo apt install -y certbot
+sudo certbot certonly --standalone -d polysquid-test.uit.no
+```
+
+Certbot temporarily binds port 80 to complete the challenge. Ensure no other service is using port 80 during issuance.
+
+#### Option B: DNS-01 (use when port 80 is blocked by firewall policy)
+
+```bash
+sudo apt update
+sudo apt install -y certbot
+sudo certbot certonly --manual --preferred-challenges dns -d polysquid-test.uit.no
+```
+
+When prompted, create the TXT record for:
+
+```text
+_acme-challenge.polysquid-test.uit.no
+```
+
+Note: `--manual` is interactive and not suitable for unattended renewals. Use a DNS provider Certbot plugin for automated renewals.
+
+#### After issuance (both methods)
+
+Copy the certificate pair into the shared cert path:
+
+```bash
+sudo cp /etc/letsencrypt/live/polysquid-test.uit.no/fullchain.pem /etc/polysquid/certs/fullchain.pem
+sudo cp /etc/letsencrypt/live/polysquid-test.uit.no/privkey.pem /etc/polysquid/certs/privkey.pem
+sudo chmod 600 /etc/polysquid/certs/privkey.pem
+```
+
+Restart consumers after updating certs:
+
+```bash
+sudo systemctl restart polysquid-self-service-nginx.service
+# Restart any TLS-enabled squid services if needed:
+sudo python3 polysquid.py
+```
+
 ## Quick Start
 
 ### 1. Install
@@ -53,45 +110,6 @@ Changes to `services.yaml` auto-deploy via the installed timer. For manual deplo
 ```bash
 sudo python3 polysquid.py
 ```
-
-### 4. TLS Certificates (Let's Encrypt DNS-01)
-
-Polysquid components that use TLS share certificate files from:
-
-- `/etc/polysquid/certs/fullchain.pem`
-- `/etc/polysquid/certs/privkey.pem`
-
-If inbound port 80 is restricted by firewall policy, use Let's Encrypt DNS-01:
-
-```bash
-sudo apt update
-sudo apt install -y certbot
-sudo certbot certonly --manual --preferred-challenges dns -d polysquid-test.uit.no
-```
-
-When prompted, create the TXT record for:
-
-```text
-_acme-challenge.polysquid-test.uit.no
-```
-
-After issuance, copy the certificate pair into the shared cert path:
-
-```bash
-sudo cp /etc/letsencrypt/live/polysquid-test.uit.no/fullchain.pem /etc/polysquid/certs/fullchain.pem
-sudo cp /etc/letsencrypt/live/polysquid-test.uit.no/privkey.pem /etc/polysquid/certs/privkey.pem
-sudo chmod 600 /etc/polysquid/certs/privkey.pem
-```
-
-Restart consumers after updating certs:
-
-```bash
-sudo systemctl restart polysquid-self-service-nginx.service
-# Restart any TLS-enabled squid services if needed:
-sudo python3 polysquid.py
-```
-
-Note: manual DNS-01 (`--manual`) is interactive and not suitable for unattended renewals. Use a DNS provider Certbot plugin for automated renewals.
 
 ## Installation
 
