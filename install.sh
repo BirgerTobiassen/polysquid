@@ -11,6 +11,7 @@ REPO_DIR="/opt/polysquid"
 REPO_URL="git@github.com:BirgerTobiassen/Polysquid.git"
 SERVICE_NAME="polysquid-update"
 RECONCILE_SERVICE_NAME="polysquid-reconcile"
+RECONCILE_PATH_NAME="polysquid-reconcile"
 TRUSTED_DIR="/usr/local/lib/polysquid"
 TRUSTED_EXEC="${TRUSTED_DIR}/polysquid.py"
 TRUSTED_UPDATE="${TRUSTED_DIR}/polysquid-update.sh"
@@ -79,6 +80,21 @@ User=root
 WantedBy=multi-user.target
 EOF
 
+# Create path-based reconcile trigger for self-service requests.
+RECONCILE_PATH_FILE="/etc/systemd/system/${RECONCILE_PATH_NAME}.path"
+cat > "$RECONCILE_PATH_FILE" << EOF
+[Unit]
+Description=Trigger polysquid reconcile when self-service requests change
+
+[Path]
+PathChanged=$REQUESTS_DIR
+PathModified=$REQUESTS_DIR
+Unit=${RECONCILE_SERVICE_NAME}.service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 # Create systemd timer
 TIMER_FILE="/etc/systemd/system/${SERVICE_NAME}.timer"
 cat > "$TIMER_FILE" << EOF
@@ -97,6 +113,7 @@ EOF
 systemctl daemon-reload
 systemctl enable --now "${SERVICE_NAME}.timer"
 systemctl enable "${RECONCILE_SERVICE_NAME}.service"
+systemctl enable --now "${RECONCILE_PATH_NAME}.path"
 
 # Create logrotate config for the update log
 LOGROTATE_CONF="/etc/logrotate.d/polysquid-update"
@@ -124,7 +141,8 @@ echo "Trusted updater installed at: ${TRUSTED_UPDATE}"
 echo "Shared cert directory prepared at: ${CERTS_DIR}"
 echo "Self-service requests directory prepared at: ${REQUESTS_DIR}"
 echo "Boot reconcile service enabled: ${RECONCILE_SERVICE_NAME}.service"
+echo "Realtime reconcile path enabled: ${RECONCILE_PATH_NAME}.path"
 echo "Enabled services have been reconciled and started where applicable."
-echo "The service will check for updates to services.yaml every 5 minutes and run the trusted executor if changes are found."
+echo "The service will check for updates to services.yaml every 5 minutes, and self-service request file changes trigger immediate reconcile."
 echo "To check status: systemctl status ${SERVICE_NAME}.timer"
 echo "To view logs: journalctl -u ${SERVICE_NAME}.service or tail /var/log/polysquid-update.log"

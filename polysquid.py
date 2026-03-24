@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 import ipaddress
+import json
 import logging
 import os
 import re
@@ -136,6 +137,51 @@ def validate_allowed_ips(allowed_ips) -> List[str]:
         except Exception:
             log.warning(f"Ignoring invalid allowed_ip '{ip}'")
     return valid
+
+
+def _is_self_service_name(name: str) -> bool:
+    normalized = re.sub(r"[\s_-]+", " ", str(name).strip().lower())
+    return normalized == "self service"
+
+
+def _load_active_self_service_ips(requests_dir: Path) -> List[str]:
+    """
+    Load active (non-expired) source IPs from self-service request files.
+    """
+    if not requests_dir.exists():
+        return []
+
+    now = datetime.now(timezone.utc)
+    active_ips: List[str] = []
+    seen = set()
+
+    for request_file in sorted(requests_dir.glob("request_*.json")):
+        try:
+            with request_file.open() as f:
+                req = json.load(f)
+
+            source_ip = str(req.get("source_ip", "")).strip()
+            expires_raw = str(req.get("expires_at", "")).strip()
+            if not source_ip or not expires_raw:
+                continue
+
+            # Keep timestamp parsing compatible with Z-suffixed UTC values.
+            expires_at = datetime.fromisoformat(expires_raw.replace("Z", "+00:00"))
+            if expires_at <= now:
+                continue
+
+            # Reuse existing CIDR/IP validation helper for consistency.
+            if not validate_allowed_ips([source_ip]):
+                log.warning(f"Ignoring invalid dynamic source_ip '{source_ip}' in {request_file.name}")
+                continue
+
+            if source_ip not in seen:
+                active_ips.append(source_ip)
+                seen.add(source_ip)
+        except Exception as e:
+            log.warning(f"Ignoring malformed request file {request_file.name}: {e}")
+
+    return active_ips
 
 
 def parse_calendar_ranges(calendar: str) -> Tuple[List[str], List[str]]:
@@ -510,6 +556,14 @@ def main():
         allowed_ips = validated["allowed_ips"]
         whitelist = validated["whitelist"]
         safe_name = safe_service_name(name, fallback=f"squid_{port}")
+
+        # Merge active self-service request IPs into allowed_ips for the Self service proxy.
+        if _is_self_service_name(name):
+            requests_dir = base_dir / "self-service" / "requests"
+            dynamic_ips = _load_active_self_service_ips(requests_dir)
+            if dynamic_ips:
+                allowed_ips = list(dict.fromkeys(allowed_ips + dynamic_ips))
+                log.info(f"Merged {len(dynamic_ips)} active self-service request IP(s) into {name}")
 
         # Layout
         client_dir = base_dir / "squid-clients" / safe_name

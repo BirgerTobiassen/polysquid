@@ -11,8 +11,26 @@ if [ ! -x "$TRUSTED_EXEC" ]; then
     exit 1
 fi
 
-# Get current hash of services.yaml
+# Helper: hash active self-service request files so dynamic whitelist changes trigger reconcile.
+hash_requests() {
+    local req_dir="$REPO_DIR/self-service/requests"
+    if [ ! -d "$req_dir" ]; then
+        echo ""
+        return
+    fi
+
+    find "$req_dir" -maxdepth 1 -type f -name 'request_*.json' -print0 \
+        | sort -z \
+        | while IFS= read -r -d '' file; do
+            sha256sum "$file"
+        done \
+        | sha256sum \
+        | awk '{print $1}'
+}
+
+# Get current hashes
 old_hash=$(git rev-parse HEAD:services.yaml 2>/dev/null || echo "")
+old_req_hash=$(hash_requests)
 
 # Pull latest changes
 if git pull --quiet; then
@@ -22,17 +40,18 @@ else
     exit 1
 fi
 
-# Get new hash
+# Get new hashes
 new_hash=$(git rev-parse HEAD:services.yaml 2>/dev/null || echo "")
+new_req_hash=$(hash_requests)
 
-# If services.yaml changed, run the trusted executor against repo data.
-if [ "$old_hash" != "$new_hash" ] && [ -n "$new_hash" ]; then
-    echo "$(date): services.yaml updated (old: $old_hash, new: $new_hash), running trusted polysquid executor" | tee -a "$LOG_FILE"
+# Reconcile when either static config changes or dynamic self-service request files change.
+if { [ "$old_hash" != "$new_hash" ] && [ -n "$new_hash" ]; } || [ "$old_req_hash" != "$new_req_hash" ]; then
+    echo "$(date): Reconcile trigger detected (services.yaml: $old_hash -> $new_hash, requests: $old_req_hash -> $new_req_hash), running trusted polysquid executor" | tee -a "$LOG_FILE"
     if /usr/bin/python3 "$TRUSTED_EXEC" --config "$REPO_DIR/services.yaml" --base-dir "$REPO_DIR" 2>&1 | tee -a "$LOG_FILE"; then
         echo "$(date): trusted polysquid executor completed successfully" | tee -a "$LOG_FILE"
     else
         echo "$(date): trusted polysquid executor failed with exit code $?" | tee -a "$LOG_FILE"
     fi
 else
-    echo "$(date): No changes to services.yaml (hash: $new_hash)" | tee -a "$LOG_FILE"
+    echo "$(date): No changes to services.yaml or self-service requests" | tee -a "$LOG_FILE"
 fi
