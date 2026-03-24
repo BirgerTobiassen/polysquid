@@ -31,10 +31,27 @@ systemctl disable --now "${SERVICE_NAME}.service" 2>/dev/null || true
 systemctl disable --now "${RECONCILE_SERVICE_NAME}.service" 2>/dev/null || true
 
 echo "Stopping and disabling generated squid services/timers..."
-for unit in /etc/systemd/system/squid-*.service /etc/systemd/system/squid-*.timer; do
+# Stop timers first so they cannot race and restart services during uninstall.
+for unit in /etc/systemd/system/squid-*.timer; do
     if [[ -e "$unit" ]]; then
         unit_name="$(basename "$unit")"
         systemctl disable --now "$unit_name" 2>/dev/null || true
+    fi
+done
+
+echo "Force-removing running squid containers (name prefix: squid_)..."
+if command -v docker >/dev/null 2>&1; then
+    mapfile -t SQUID_CONTAINERS < <(docker ps -aq --filter "name=^squid_")
+    if [[ "${#SQUID_CONTAINERS[@]}" -gt 0 ]]; then
+        docker rm -f "${SQUID_CONTAINERS[@]}" >/dev/null 2>&1 || true
+    fi
+fi
+
+# Units are disabled without --now because containers are already removed above.
+for unit in /etc/systemd/system/squid-*.service /etc/systemd/system/squid-*.timer; do
+    if [[ -e "$unit" ]]; then
+        unit_name="$(basename "$unit")"
+        systemctl disable "$unit_name" 2>/dev/null || true
     fi
 done
 
@@ -53,14 +70,6 @@ echo "Removing trusted updater and executor..."
 rm -f "$TRUSTED_UPDATE"
 rm -f "$TRUSTED_EXEC"
 rmdir "$TRUSTED_DIR" 2>/dev/null || true
-
-echo "Removing running squid containers (name prefix: squid_)..."
-if command -v docker >/dev/null 2>&1; then
-    mapfile -t SQUID_CONTAINERS < <(docker ps -aq --filter "name=^squid_")
-    if [[ "${#SQUID_CONTAINERS[@]}" -gt 0 ]]; then
-        docker rm -f "${SQUID_CONTAINERS[@]}" >/dev/null 2>&1 || true
-    fi
-fi
 
 if [[ "$PURGE" == true ]]; then
     echo "Purge enabled: removing $REPO_DIR and update log..."
