@@ -39,6 +39,7 @@ self-service/
 │   ├── requirements.txt    # Python dependencies
 │   └── Dockerfile          # Container definition
 ├── install.sh              # Install/build/enable/start the self-service stack
+├── uninstall.sh            # Disable/remove installed units and containers
 ├── build.sh                # Helper for manual build/start/stop/log workflows
 ├── whitelist-manager.py    # Helper to read request files
 ├── polysquid-self-service.service  # systemd unit template
@@ -99,6 +100,22 @@ sudo systemctl status polysquid-self-service-nginx.service
 # View logs
 docker logs -f polysquid_self_service
 docker logs -f polysquid_self_service_nginx
+```
+
+### 4. Uninstall the Stack
+
+```bash
+cd /opt/polysquid/self-service
+sudo ./uninstall.sh
+```
+
+By default this stops/disables the services, removes the installed systemd units,
+and removes the running containers.
+
+To also remove the self-service Docker image and the local `requests/` directory:
+
+```bash
+sudo ./uninstall.sh --purge
 ```
 
 ## Integration with Polysquid
