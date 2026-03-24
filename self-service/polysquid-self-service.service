@@ -15,6 +15,7 @@ ExecStartPre=-/usr/bin/docker rm -f polysquid_self_service
 # Start Flask app container
 ExecStart=/usr/bin/docker run \
   --name polysquid_self_service \
+  --network polysquid-self-service \
   -v /opt/polysquid/self-service/requests:/shared/requests \
   -p 127.0.0.1:5000:5000 \
   -e REQUESTS_DIR=/shared/requests \

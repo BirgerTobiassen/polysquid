@@ -14,7 +14,7 @@ ExecStartPre=-/usr/bin/docker rm -f polysquid_self_service_nginx
 
 ExecStart=/usr/bin/docker run \
   --name polysquid_self_service_nginx \
-  --add-host=host.docker.internal:host-gateway \
+  --network polysquid-self-service \
   -v /opt/polysquid/self-service/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
   -v /opt/polysquid/self-service/nginx/html/outside-subnet.html:/usr/share/nginx/html/outside-subnet.html:ro \
   -v /etc/polysquid/certs:/etc/nginx/certs:ro \

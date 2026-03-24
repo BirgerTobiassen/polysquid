@@ -49,6 +49,9 @@ if [[ ! -f "$CERTS_DIR/fullchain.pem" || ! -f "$CERTS_DIR/privkey.pem" ]]; then
     exit 1
 fi
 
+echo "Creating Docker network for service communication"
+docker network create polysquid-self-service >/dev/null 2>&1 || true
+
 echo "Building Docker image: $IMAGE_NAME"
 docker build -t "$IMAGE_NAME" "$WEBAPP_DIR"
 
