@@ -148,6 +148,60 @@
         .submit-btn:disabled .loading-spinner {
             display: inline-block;
         }
+        .section-divider {
+            border-top: 1px solid #ddd;
+            margin: 40px 0 30px 0;
+        }
+        .proxy-config {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .proxy-config h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+            margin-top: 0;
+        }
+        .proxy-config h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+        .proxy-config p {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-family: "Monaco", "Courier New", monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        .copy-btn:hover {
+            background: #764ba2;
+        }
     </style>
 </head>
 <body>
@@ -194,6 +248,56 @@
                 <button type="reset" class="reset-btn">Clear</button>
             </div>
         </form>
+
+        <div class="section-divider"></div>
+
+        <div class="proxy-config">
+            <h3>📋 Proxy Configuration</h3>
+            <p>After your request is approved, configure your device to use the proxy:</p>
+
+            <h4>🌐 Web Browsers (Chrome, Firefox, Safari, Edge)</h4>
+            <p><strong>Mac/Linux:</strong> System Settings → Network → Proxy Settings</p>
+            <p><strong>Windows:</strong> Settings → Network & Internet → Proxy</p>
+            <div class="code-block">
+Proxy Address: polysquid-test.uit.no<br>
+Port: 3128 (HTTP/HTTPS)
+            </div>
+
+            <h4>🖥️ Terminal / Command Line</h4>
+            <p><strong>curl:</strong></p>
+            <div class="code-block">
+curl --proxy-insecure --proxy https://polysquid-test.uit.no:3128 https://example.com
+            </div>
+            <p><strong>git:</strong></p>
+            <div class="code-block">
+git config --global http.proxy https://polysquid-test.uit.no:3128<br>
+git config --global https.proxy https://polysquid-test.uit.no:3128
+            </div>
+            <p><strong>Environment variables:</strong></p>
+            <div class="code-block">
+export HTTP_PROXY=https://polysquid-test.uit.no:3128<br>
+export HTTPS_PROXY=https://polysquid-test.uit.no:3128
+            </div>
+
+            <h4>🐍 Python</h4>
+            <div class="code-block">
+import requests<br>
+proxies = {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"http": "https://polysquid-test.uit.no:3128",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"https": "https://polysquid-test.uit.no:3128"<br>
+}<br>
+requests.get("https://example.com", proxies=proxies, verify=False)
+            </div>
+
+            <h4>⚙️ apt / Package Managers</h4>
+            <div class="code-block">
+echo 'Acquire::http::Proxy "https://polysquid-test.uit.no:3128";' | sudo tee /etc/apt/apt.conf.d/99proxy<br>
+echo 'Acquire::https::Proxy "https://polysquid-test.uit.no:3128";' | sudo tee -a /etc/apt/apt.conf.d/99proxy
+            </div>
+
+            <h4>ℹ️ Certificate Warnings</h4>
+            <p>The proxy uses a self-signed or internal certificate. When using command-line tools, you may see SSL certificate warnings. Use the <code>--insecure</code> or <code>--proxy-insecure</code> flag (as shown in curl example) to bypass validation, or import the certificate into your system trust store.</p>
+        </div>
     </div>
 
     <script>
