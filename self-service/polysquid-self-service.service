@@ -11,6 +11,8 @@ RestartSec=10
 TimeoutStopSec=30
 
 # Ensure stale container is removed before starting
+ExecStartPre=/usr/bin/mkdir -p /opt/polysquid/self-service/requests
+ExecStartPre=/usr/bin/chown -R 10001:10001 /opt/polysquid/self-service/requests
 ExecStartPre=-/usr/bin/docker rm -f polysquid_self_service
 
 # Start Flask app container

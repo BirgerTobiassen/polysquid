@@ -7,6 +7,8 @@ REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 WEBAPP_DIR="$SCRIPT_DIR/webapp"
 IMAGE_NAME="polysquid-self-service:latest"
 REQUESTS_DIR="$SCRIPT_DIR/requests"
+APP_UID=10001
+APP_GID=10001
 CERTS_DIR="/etc/polysquid/certs"
 SYSTEMD_DIR="/etc/systemd/system"
 APP_UNIT_SRC="$SCRIPT_DIR/polysquid-self-service.service"
@@ -35,7 +37,8 @@ if [[ ! -f "$APP_UNIT_SRC" || ! -f "$NGINX_UNIT_SRC" ]]; then
 fi
 
 mkdir -p "$REQUESTS_DIR"
-chmod 755 "$REQUESTS_DIR"
+chown -R "$APP_UID:$APP_GID" "$REQUESTS_DIR"
+chmod 775 "$REQUESTS_DIR"
 
 if [[ ! -d "$CERTS_DIR" ]]; then
     echo "Missing TLS cert directory: $CERTS_DIR"

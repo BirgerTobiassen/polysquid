@@ -19,8 +19,10 @@ RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 COPY app.py .
 COPY templates/ templates/
 
-# Run the app as a non-root user.
-RUN useradd --create-home --shell /usr/sbin/nologin appuser && chown -R appuser:appuser /app
+# Run the app as a non-root user with fixed UID/GID so mounted volume permissions are predictable.
+RUN groupadd --gid 10001 appuser \
+    && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin appuser \
+    && chown -R appuser:appuser /app
 USER appuser
 
 # Health check
