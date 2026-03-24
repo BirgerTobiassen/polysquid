@@ -351,17 +351,24 @@ on_calendar: "00:00..23:59:59"             # Every day (equivalent to no schedul
 
 ### Docker Image Configuration
 
-Polysquid uses `ubuntu/squid:latest` by default. This image includes TLS support, and its entrypoint
-automatically initialises the Squid cache directory on first start.
+Polysquid defaults to `polysquid-squid:debian-openssl`, a local image built from `squid.Dockerfile`
+using Debian 12 with `squid-openssl`. This avoids GnuTLS chain-delivery issues on TLS-enabled proxy
+listeners and is built automatically by `install.sh`.
+
+To build it manually:
+
+```bash
+docker build -t polysquid-squid:debian-openssl -f squid.Dockerfile .
+```
 
 To use a different image, override with the `POLYSQUID_IMAGE` environment variable:
 
 ```bash
-export POLYSQUID_IMAGE="ubuntu/squid:latest"
+export POLYSQUID_IMAGE="polysquid-squid:debian-openssl"
 python3 polysquid.py
 
 # Or inline at install time
-POLYSQUID_IMAGE="ubuntu/squid:latest" sudo ./install.sh
+POLYSQUID_IMAGE="polysquid-squid:debian-openssl" sudo ./install.sh
 
 # Check current containers
 docker ps --filter "name=squid_" --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}"

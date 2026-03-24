@@ -111,6 +111,10 @@ cat > "$LOGROTATE_CONF" << EOF
 }
 EOF
 
+# Build Debian-based OpenSSL Squid image used by default for proxy containers.
+echo "Building default Squid image: polysquid-squid:debian-openssl"
+docker build -t polysquid-squid:debian-openssl -f "$REPO_DIR/squid.Dockerfile" "$REPO_DIR"
+
 # Perform an initial reconciliation so enabled services start immediately after install.
 /usr/bin/python3 "$TRUSTED_EXEC" --config "$REPO_DIR/services.yaml" --base-dir "$REPO_DIR"
 
