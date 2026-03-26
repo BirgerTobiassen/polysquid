@@ -1,7 +1,7 @@
 #!/bin/bash
 
 REPO_DIR="/opt/polysquid"
-LOG_FILE="/var/log/polysquid-update.log"
+LOG_FILE="/var/log/polysquid-git-update.log"
 TRUSTED_EXEC="/usr/local/lib/polysquid/polysquid.py"
 
 # Tag pattern to pull (e.g., "v1.*", "production-*", etc.)

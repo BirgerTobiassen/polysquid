@@ -10,11 +10,11 @@ set -euo pipefail
 REPO_DIR="/opt/polysquid"
 REPO_URL="git@github.com:BirgerTobiassen/Polysquid.git"
 SERVICE_NAME="polysquid-git-update"
-  RECONCILE_SERVICE_NAME="polysquid-reconcile"
-  RECONCILE_PATH_NAME="polysquid-reconcile"
-  TRUSTED_DIR="/usr/local/lib/polysquid"
-  TRUSTED_EXEC="${TRUSTED_DIR}/polysquid.py"
-  TRUSTED_UPDATE="${TRUSTED_DIR}/polysquid-git-update.sh"
+RECONCILE_SERVICE_NAME="polysquid-reconcile"
+RECONCILE_PATH_NAME="polysquid-reconcile"
+TRUSTED_DIR="/usr/local/lib/polysquid"
+TRUSTED_EXEC="${TRUSTED_DIR}/polysquid.py"
+TRUSTED_UPDATE="${TRUSTED_DIR}/polysquid-git-update.sh"
 CERTS_DIR="/etc/polysquid/certs"
 TIMER_INTERVAL="*-*-* *:0/5:00"  # Every 5 minutes
 
@@ -116,9 +116,9 @@ systemctl enable "${RECONCILE_SERVICE_NAME}.service"
 systemctl enable --now "${RECONCILE_PATH_NAME}.path"
 
 # Create logrotate config for the update log
-LOGROTATE_CONF="/etc/logrotate.d/polysquid-update"
+LOGROTATE_CONF="/etc/logrotate.d/polysquid-git-update"
 cat > "$LOGROTATE_CONF" << EOF
-/var/log/polysquid-update.log {
+/var/log/polysquid-git-update.log {
     daily
     rotate 7
     compress

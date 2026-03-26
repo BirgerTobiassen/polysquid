@@ -28,8 +28,7 @@ access_log /var/log/squid/access.log
 cache_log /var/log/squid/cache.log
 # Default tag for breadth ACL; refined below
 # Note: We intentionally create 'allowed_ips' in all cases to simplify rules.
-# If no allowed_ips provided for the service, we allow all sources (compatibility
-# with the original script's behavior).
+# If no allowed_ips are provided for the service, we allow all sources.
 """
 
 
@@ -310,7 +309,7 @@ def generate_squid_conf(conf_path: Path, allowed_ips: List[str], whitelist: List
     - If whitelist provided: only allow those domains, deny everything else.
     - If no whitelist: allow all from allowed_ips, deny everything else.
     - Combine source and destination ACLs so source restrictions aren't bypassed.
-    - If no allowed_ips given, allow all (compatibility with original script).
+    - If no allowed_ips are given, allow all sources.
     """
     lines = [TEMPLATE_CONF]
     if use_tls:
@@ -321,7 +320,7 @@ def generate_squid_conf(conf_path: Path, allowed_ips: List[str], whitelist: List
     if allowed_ips:
         lines.append("acl allowed_ips src " + " ".join(allowed_ips))
     else:
-        # Compatibility with original script where 'localnet src all' allowed everyone
+        # If no source list is configured, keep the service open to all sources.
         lines.append("acl allowed_ips src all")
     if whitelist:
         lines.append("acl whitelist dstdomain " + " ".join(whitelist))

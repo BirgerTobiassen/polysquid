@@ -64,7 +64,7 @@ sudo chmod 600 /etc/polysquid/certs/privkey.pem
 Restart consumers after updating certs:
 
 ```bash
-sudo systemctl restart polysquid-self-service-nginx.service
+sudo systemctl restart polysquid-nginx.service
 # Restart any TLS-enabled squid services if needed:
 sudo python3 polysquid.py
 ```
@@ -404,7 +404,7 @@ Example:
 ### Performance Considerations
 
 - Each service runs in a separate Docker container; memory/CPU resources scale linearly
-- Squid cache is persistent per service (stored in `squid-clients/<service>/cache/`)
+- Squid cache is persistent per service (stored in `polysquid-services/<service>/cache/`)
 - Logs are compressed and rotated daily (30-day retention by default)
 - Systemd timers have 1-second accuracy; use for scheduling, not precise timing
 - Git polling every 5 minutes is configurable in timer but recommended minimum is 1 minute
@@ -650,7 +650,7 @@ Request file changes trigger immediate reconciliation via the `polysquid-reconci
 **Container won't start:**
 
 ```bash
-docker logs polysquid_self_service
+docker logs polysquid_webapp
 ```
 
 **Cannot access the web portal:**
@@ -660,9 +660,9 @@ docker logs polysquid_self_service
 sudo firewall-cmd --add-port=443/tcp --permanent
 
 # Check container binding
-docker ps | grep polysquid_self_service
-docker logs polysquid_self_service
-docker logs polysquid_self_service_nginx
+docker ps | grep polysquid_webapp
+docker logs polysquid_webapp
+docker logs polysquid_nginx
 ```
 
 **Requests not being processed:**
