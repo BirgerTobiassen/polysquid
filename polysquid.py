@@ -546,7 +546,12 @@ def generate_squid_conf(
         # If no source list is configured, keep the service open to all sources.
         lines.append("acl allowed_ips src all")
     if whitelist:
-        lines.append("acl whitelist dstdomain " + " ".join(whitelist))
+        # Keep acl lines bounded. Very large EDL feeds can exceed parser limits
+        # if emitted as one giant line.
+        chunk_size = 200
+        for i in range(0, len(whitelist), chunk_size):
+            chunk = whitelist[i:i + chunk_size]
+            lines.append("acl whitelist dstdomain " + " ".join(chunk))
     lines.append("")  # spacer
     # Access rules: deny-by-default
     if whitelist_defined:
