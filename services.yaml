@@ -7,7 +7,7 @@ services:
   allowed_ips:  # Optional: List of source IPs/CIDRs allowed to connect (default: all IPs allowed)
     - 192.168.1.0/24
     - 10.0.0.1
-  whitelist:  # Optional: List of destination domains allowed (deny-by-default)
+  whitelist:  # Optional: List of destination domains allowed. If omitted, all destinations are allowed.
     - .example.com
     - .trusted.org
 
@@ -23,8 +23,23 @@ services:
 - name: "TEST3"
   port: 3131
   use_tls: false
-  enabled: true  # This service is currently enabled
-  on_calendar: shared.calendars.off_hours  # Use shared calendar for off hours
+  enabled: true
+  on_calendar: shared.calendars.off_hours
+
+- name: "TEST_GUL"
+  port: 3132
+  use_tls: true
+  enabled: true
+  allowed_ips:
+    - 129.242.32.226
+
+- name: "TEST_RØD"
+  port: 3133
+  use_tls: true
+  enabled: true
+  allowed_ips:
+    - 129.242.32.227
+
 
 shared:
   lists: 
