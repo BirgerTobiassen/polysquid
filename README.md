@@ -238,7 +238,7 @@ TLS-protected proxy endpoint; it does not enable SSL bump or HTTPS interception.
 
 - The install script sets up a systemd timer that checks Git every 5 minutes for changes to `services.yaml`
 - Changes automatically trigger the trusted executor at `/usr/local/lib/polysquid/polysquid.py` to redeploy affected services
-- A systemd path unit (`polysquid-reconcile.path`) watches the self-service `requests/` directory and triggers an **immediate** reconciliation when request files are added, modified, or removed — no polling delay
+- Self-service components are installed and managed separately by `self-service/install.sh`
 - A boot reconcile service restores the correct service state after reboot (services start if current time is inside an enabled window)
 - No downtime; containers are replaced seamlessly
 
@@ -299,11 +299,11 @@ sudo journalctl -u polysquid-git-update.service
 tail -f /var/log/polysquid-git-update.log
 ```
 
-Check the real-time self-service request watcher:
+Self-service units are managed by the self-service installer:
 
 ```bash
-sudo systemctl status polysquid-reconcile.path
-sudo systemctl status polysquid-reconcile.service
+sudo systemctl status polysquid-webapp.service
+sudo systemctl status polysquid-nginx.service
 ```
 
 ## Requirements
@@ -338,8 +338,6 @@ polysquid/
 
 - Repository: `/opt/polysquid/`
 - Trusted runtime scripts: `/usr/local/lib/polysquid/polysquid.py` and `/usr/local/lib/polysquid/polysquid-git-update.sh`
-- Boot reconcile service: `/etc/systemd/system/polysquid-reconcile.service`
-- Real-time request watcher: `/etc/systemd/system/polysquid-reconcile.path`
 - Systemd units: `/etc/systemd/system/polysquid-*.{service,timer}`
 - Log rotation: `/etc/logrotate.d/polysquid-*` and `/etc/logrotate.d/polysquid-git-update`
 - Update logs: `/var/log/polysquid-git-update.log`
@@ -607,7 +605,7 @@ The Flask app writes request files to `self-service/requests/` (commonly `/opt/p
 }
 ```
 
-Request file changes trigger immediate reconciliation via the `polysquid-reconcile.path` systemd path unit. When a file is added or modified, systemd runs `polysquid-reconcile.service` which invokes `polysquid.py` to redeploy affected services. `whitelist-manager.py` is available as a standalone helper to inspect and generate ACL entries from active requests.
+Self-service deployment is handled separately by `self-service/install.sh` and uses `polysquid-webapp.service` plus `polysquid-nginx.service`. `whitelist-manager.py` is available as a standalone helper to inspect and generate ACL entries from active requests.
 
 ### API Endpoints
 

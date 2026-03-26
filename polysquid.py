@@ -50,7 +50,7 @@ def safe_service_name(name: str, fallback: str = "") -> str:
     cleaned = re.sub(r"[^A-Za-z0-9_-]", "", name.replace(" ", "_"))
     if not cleaned:
         cleaned = fallback or "polysquid_service"
-    return cleaned
+    return cleaned.lower()
 
 
 def load_yaml(path: Path) -> Dict:
@@ -164,7 +164,6 @@ def _load_active_self_service_ips(requests_dir: Path) -> List[str]:
             if expires_at <= now:
                 continue
 
-            # Reuse existing CIDR/IP validation helper for consistency.
             if not validate_allowed_ips([source_ip]):
                 log.warning(f"Ignoring invalid dynamic source_ip '{source_ip}' in {request_file.name}")
                 continue
@@ -485,8 +484,13 @@ def cleanup_removed_services(active_safe_names: List[str]):
         # Ignore helper stop units; they are tied to their parent service name.
         if unit.name.endswith("-stop.service"):
             continue
-        # Ignore polysquid system services (reconcile, webapp, nginx, git-update).
-        if unit.stem in ("polysquid-reconcile", "polysquid-webapp", "polysquid-nginx", "polysquid-git-update"):
+        # Ignore polysquid system services managed outside generated client units.
+        if unit.stem in (
+            "polysquid-webapp",
+            "polysquid-nginx",
+            "polysquid-git-update",
+            "polysquid-self-service-reconcile",
+        ):
             continue
 
         svc_name = unit.stem.replace("polysquid-", "")
@@ -648,9 +652,11 @@ def main():
 
     cleanup_removed_services(active_safe_names)
 
-    # Process self-service proxy from separate config file
+    # Self-service proxy is managed by self-service/install.sh. Only process it
+    # when the install-created requests directory is present.
     self_service_config_path = base_dir / "self-service" / "config.yaml"
-    if self_service_config_path.exists():
+    self_service_requests_dir = base_dir / "self-service" / "requests"
+    if self_service_config_path.exists() and self_service_requests_dir.exists():
         self_service_config = _load_self_service_config(self_service_config_path)
         if self_service_config:
             log.info("Processing self-service proxy from self-service/config.yaml")
@@ -676,7 +682,7 @@ def _load_self_service_config(config_path: Path) -> Optional[Dict]:
         with config_path.open() as f:
             data = yaml.safe_load(f)
         if not isinstance(data, dict) or "service" not in data:
-            log.warning(f"Invalid self-service config: must have 'service' key")
+            log.warning("Invalid self-service config: must have 'service' key")
             return None
         return data.get("service", {})
     except (FileNotFoundError, yaml.YAMLError, ValueError) as e:
@@ -692,12 +698,8 @@ def _process_self_service_service(
     active_safe_names: List[str],
 ) -> None:
     """
-    Process the self-service proxy service:
-    - Load dynamic IPs from request files
-    - Merge into configured allowed_ips
-    - Generate systemd units as if it were in services.yaml
+    Process self-service proxy service from self-service/config.yaml.
     """
-    # Validate and prepare service config
     validated = validate_service(service_config, shared)
     if not validated:
         log.warning("Self-service config validation failed, skipping")
@@ -712,14 +714,12 @@ def _process_self_service_service(
     whitelist = validated["whitelist"]
     safe_name = safe_service_name(name, fallback="self-service")
 
-    # Load active request IPs and merge
     requests_dir = base_dir / "self-service" / "requests"
     dynamic_ips = _load_active_self_service_ips(requests_dir)
     if dynamic_ips:
         allowed_ips = list(dict.fromkeys(allowed_ips + dynamic_ips))
         log.info(f"Merged {len(dynamic_ips)} active self-service request IP(s) into {name}")
 
-    # Layout
     client_dir = base_dir / "polysquid-services" / safe_name
     systemd_dir = client_dir / "systemd"
     conf_dir = client_dir / "conf"
@@ -729,11 +729,9 @@ def _process_self_service_service(
     for d in [systemd_dir, conf_dir, log_dir, cache_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    # Permissions for Squid user inside docker (proxy uid/gid = 13)
     run(SUDO + ["chown", "-R", "13:13", str(log_dir)], ignore_err=True)
     run(SUDO + ["chown", "-R", "13:13", str(cache_dir)], ignore_err=True)
 
-    # squid.conf
     conf_changed = generate_squid_conf(conf_dir / "squid.conf", allowed_ips, whitelist, use_tls)
     if conf_changed:
         r = run(SUDO + ["systemctl", "is-active", "--quiet", f"polysquid-{safe_name}.service"])
@@ -741,7 +739,6 @@ def _process_self_service_service(
             run(SUDO + ["/usr/bin/docker", "kill", "-s", "HUP", f"polysquid_{safe_name}"], ignore_err=True)
             log.info(f"Config changed for {name}: sent SIGHUP to reload")
 
-    # Systemd + logrotate files
     service_file, start_timer_file, stop_service_file, stop_timer_file, logrotate_file = write_systemd_units(
         base_dir=base_dir,
         systemd_dir=systemd_dir,
@@ -756,7 +753,6 @@ def _process_self_service_service(
         calendar=calendar,
     )
 
-    # Clean old symlinks
     run(SUDO + ["rm", "-f", f"/etc/systemd/system/polysquid-{safe_name}.service"])
     run(SUDO + ["rm", "-f", f"/etc/systemd/system/polysquid-{safe_name}-start.timer"])
     run(SUDO + ["rm", "-f", f"/etc/systemd/system/polysquid-{safe_name}-stop.timer"])
@@ -765,11 +761,8 @@ def _process_self_service_service(
 
     if enabled:
         log.info(f"Enabled: {name}")
-
-        # Link generated artifacts into the live systemd and logrotate locations.
         run(SUDO + ["ln", "-s", str(service_file), f"/etc/systemd/system/polysquid-{safe_name}.service"])
 
-        # Timers and stop unit are only used when the service has a schedule.
         if calendar:
             if start_timer_file.exists():
                 run(SUDO + ["ln", "-s", str(start_timer_file), f"/etc/systemd/system/polysquid-{safe_name}-start.timer"])
@@ -785,7 +778,6 @@ def _process_self_service_service(
             if stop_timer_file.exists():
                 run(SUDO + ["systemctl", "enable", "--now", f"polysquid-{safe_name}-stop.timer"], check=False)
 
-            # Ensure correct state now (install/run time), independent of timer catch-up behavior.
             if is_service_active_now(calendar):
                 run(SUDO + ["systemctl", "start", f"polysquid-{safe_name}.service"], check=False)
             else:
@@ -798,8 +790,6 @@ def _process_self_service_service(
             run(SUDO + ["systemctl", "enable", "--now", f"polysquid-{safe_name}.service"], check=False)
     else:
         log.info(f"Disabled: {name}")
-
-        # Disabled services are stopped and left without active systemd links.
         run(SUDO + ["systemctl", "disable", "--now", f"polysquid-{safe_name}.service"], ignore_err=True)
         run(SUDO + ["systemctl", "disable", "--now", f"polysquid-{safe_name}-start.timer"], ignore_err=True)
         run(SUDO + ["systemctl", "disable", "--now", f"polysquid-{safe_name}-stop.timer"], ignore_err=True)

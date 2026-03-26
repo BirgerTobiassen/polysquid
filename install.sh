@@ -10,8 +10,6 @@ set -euo pipefail
 REPO_DIR="/opt/polysquid"
 REPO_URL="git@github.com:BirgerTobiassen/Polysquid.git"
 SERVICE_NAME="polysquid-git-update"
-RECONCILE_SERVICE_NAME="polysquid-reconcile"
-RECONCILE_PATH_NAME="polysquid-reconcile"
 TRUSTED_DIR="/usr/local/lib/polysquid"
 TRUSTED_EXEC="${TRUSTED_DIR}/polysquid.py"
 TRUSTED_UPDATE="${TRUSTED_DIR}/polysquid-git-update.sh"
@@ -45,11 +43,6 @@ install -o root -g root -m 0755 "$REPO_DIR/polysquid-git-update.sh" "$TRUSTED_UP
 mkdir -p "$CERTS_DIR"
 chmod 755 /etc/polysquid "$CERTS_DIR" 2>/dev/null || true
 
-# Create self-service requests directory for dynamic whitelist submissions.
-REQUESTS_DIR="$REPO_DIR/self-service/requests"
-mkdir -p "$REQUESTS_DIR"
-chmod 755 "$REQUESTS_DIR"
-
 # Create systemd service
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 cat > "$SERVICE_FILE" << EOF
@@ -61,38 +54,6 @@ After=network-online.target
 Type=oneshot
 ExecStart=$TRUSTED_UPDATE
 User=root
-EOF
-
-# Create boot reconcile service
-RECONCILE_SERVICE_FILE="/etc/systemd/system/${RECONCILE_SERVICE_NAME}.service"
-cat > "$RECONCILE_SERVICE_FILE" << EOF
-[Unit]
-Description=Polysquid Reconcile Service State On Boot
-After=network-online.target docker.service
-Wants=network-online.target docker.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/python3 $TRUSTED_EXEC --config $REPO_DIR/services.yaml --base-dir $REPO_DIR
-User=root
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Create path-based reconcile trigger for self-service requests.
-RECONCILE_PATH_FILE="/etc/systemd/system/${RECONCILE_PATH_NAME}.path"
-cat > "$RECONCILE_PATH_FILE" << EOF
-[Unit]
-Description=Trigger polysquid reconcile when self-service requests change
-
-[Path]
-PathChanged=$REQUESTS_DIR
-PathModified=$REQUESTS_DIR
-Unit=${RECONCILE_SERVICE_NAME}.service
-
-[Install]
-WantedBy=multi-user.target
 EOF
 
 # Create systemd timer
@@ -112,8 +73,6 @@ EOF
 # Reload systemd and enable timer
 systemctl daemon-reload
 systemctl enable --now "${SERVICE_NAME}.timer"
-systemctl enable "${RECONCILE_SERVICE_NAME}.service"
-systemctl enable --now "${RECONCILE_PATH_NAME}.path"
 
 # Create logrotate config for the update log
 LOGROTATE_CONF="/etc/logrotate.d/polysquid-git-update"
@@ -139,10 +98,7 @@ echo "Installation complete!"
 echo "Trusted executor installed at: ${TRUSTED_EXEC}"
 echo "Trusted updater installed at: ${TRUSTED_UPDATE}"
 echo "Shared cert directory prepared at: ${CERTS_DIR}"
-echo "Self-service requests directory prepared at: ${REQUESTS_DIR}"
-echo "Boot reconcile service enabled: ${RECONCILE_SERVICE_NAME}.service"
-echo "Realtime reconcile path enabled: ${RECONCILE_PATH_NAME}.path"
 echo "Enabled services have been reconciled and started where applicable."
-echo "The service will check for updates to services.yaml every 5 minutes, and self-service request file changes trigger immediate reconcile."
+echo "The service will check for updates to services.yaml every 5 minutes."
 echo "To check status: systemctl status ${SERVICE_NAME}.timer"
 echo "To view logs: journalctl -u ${SERVICE_NAME}.service or tail /var/log/polysquid-git-update.log"
