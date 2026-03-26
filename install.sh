@@ -9,12 +9,12 @@ set -euo pipefail
 # Configuration
 REPO_DIR="/opt/polysquid"
 REPO_URL="git@github.com:BirgerTobiassen/Polysquid.git"
-SERVICE_NAME="polysquid-update"
-RECONCILE_SERVICE_NAME="polysquid-reconcile"
-RECONCILE_PATH_NAME="polysquid-reconcile"
-TRUSTED_DIR="/usr/local/lib/polysquid"
-TRUSTED_EXEC="${TRUSTED_DIR}/polysquid.py"
-TRUSTED_UPDATE="${TRUSTED_DIR}/polysquid-update.sh"
+SERVICE_NAME="polysquid-git-update"
+  RECONCILE_SERVICE_NAME="polysquid-reconcile"
+  RECONCILE_PATH_NAME="polysquid-reconcile"
+  TRUSTED_DIR="/usr/local/lib/polysquid"
+  TRUSTED_EXEC="${TRUSTED_DIR}/polysquid.py"
+  TRUSTED_UPDATE="${TRUSTED_DIR}/polysquid-git-update.sh"
 CERTS_DIR="/etc/polysquid/certs"
 TIMER_INTERVAL="*-*-* *:0/5:00"  # Every 5 minutes
 
@@ -39,7 +39,7 @@ chown -R root:root "$REPO_DIR"
 # This prevents code in future git pulls from being executed automatically.
 mkdir -p "$TRUSTED_DIR"
 install -o root -g root -m 0755 "$REPO_DIR/polysquid.py" "$TRUSTED_EXEC"
-install -o root -g root -m 0755 "$REPO_DIR/polysquid-update.sh" "$TRUSTED_UPDATE"
+install -o root -g root -m 0755 "$REPO_DIR/polysquid-git-update.sh" "$TRUSTED_UPDATE"
 
 # Create shared TLS cert location used by Squid TLS and self-service nginx.
 mkdir -p "$CERTS_DIR"
@@ -129,8 +129,8 @@ cat > "$LOGROTATE_CONF" << EOF
 EOF
 
 # Build Debian-based OpenSSL Squid image used by default for proxy containers.
-echo "Building default Squid image: polysquid-squid:debian-openssl"
-docker build -t polysquid-squid:debian-openssl -f "$REPO_DIR/squid.Dockerfile" "$REPO_DIR"
+echo "Building default Squid image: polysquid-proxy:debian-openssl"
+docker build -t polysquid-proxy:debian-openssl -f "$REPO_DIR/proxy.Dockerfile" "$REPO_DIR"
 
 # Perform an initial reconciliation so enabled services start immediately after install.
 /usr/bin/python3 "$TRUSTED_EXEC" --config "$REPO_DIR/services.yaml" --base-dir "$REPO_DIR"
@@ -145,4 +145,4 @@ echo "Realtime reconcile path enabled: ${RECONCILE_PATH_NAME}.path"
 echo "Enabled services have been reconciled and started where applicable."
 echo "The service will check for updates to services.yaml every 5 minutes, and self-service request file changes trigger immediate reconcile."
 echo "To check status: systemctl status ${SERVICE_NAME}.timer"
-echo "To view logs: journalctl -u ${SERVICE_NAME}.service or tail /var/log/polysquid-update.log"
+echo "To view logs: journalctl -u ${SERVICE_NAME}.service or tail /var/log/polysquid-git-update.log"

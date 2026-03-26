@@ -259,21 +259,21 @@ sudo python3 polysquid.py --verbose
 View all Squid services:
 
 ```bash
-systemctl list-units "squid-*"
+systemctl list-units "polysquid-*"
 ```
 
 Start/stop individual services:
 
 ```bash
-sudo systemctl start squid-example.service
-sudo systemctl stop squid-example.service
+sudo systemctl start polysquid-example.service
+sudo systemctl stop polysquid-example.service
 ```
 
 View service logs:
 
 ```bash
-sudo docker logs squid_example
-sudo journalctl -u squid-example.service
+sudo docker logs polysquid_example
+sudo journalctl -u polysquid-example.service
 ```
 
 ### Timer Scheduling
@@ -282,11 +282,11 @@ Services with `on_calendar` defined have start/stop timers:
 
 ```bash
 # View timer status
-sudo systemctl list-timers "squid-*-start.timer"
-sudo systemctl list-timers "squid-*-stop.timer"
+sudo systemctl list-timers "polysquid-*-start.timer"
+sudo systemctl list-timers "polysquid-*-stop.timer"
 
 # View next scheduled triggers
-sudo systemctl status squid-example-start.timer
+sudo systemctl status polysquid-example-start.timer
 ```
 
 ### Update Monitoring
@@ -294,9 +294,9 @@ sudo systemctl status squid-example-start.timer
 Check if automated updates are working:
 
 ```bash
-sudo systemctl status polysquid-update.timer
-sudo journalctl -u polysquid-update.service
-tail -f /var/log/polysquid-update.log
+sudo systemctl status polysquid-git-update.timer
+sudo journalctl -u polysquid-git-update.service
+tail -f /var/log/polysquid-git-update.log
 ```
 
 Check the real-time self-service request watcher:
@@ -321,11 +321,12 @@ sudo systemctl status polysquid-reconcile.service
 ```text
 polysquid/
 ├── polysquid.py              # Main deployment script
-├── polysquid-update.sh       # Git change detection and auto-deploy
+├── polysquid-git-update.sh   # Git change detection and auto-deploy
 ├── install.sh                # Installation script
 ├── services.yaml             # Configuration file
+├── proxy.Dockerfile          # Squid proxy Docker image definition
 ├── README.md                 # This file
-└── squid-clients/            # Generated per-service directories
+└── polysquid-services/       # Generated per-service directories
     └── <service>/
         ├── systemd/          # Systemd unit files and timers
         ├── conf/             # squid.conf (generated)
@@ -336,12 +337,12 @@ polysquid/
 **Installed Locations** (when using install.sh):
 
 - Repository: `/opt/polysquid/`
-- Trusted runtime scripts: `/usr/local/lib/polysquid/polysquid.py` and `/usr/local/lib/polysquid/polysquid-update.sh`
+- Trusted runtime scripts: `/usr/local/lib/polysquid/polysquid.py` and `/usr/local/lib/polysquid/polysquid-git-update.sh`
 - Boot reconcile service: `/etc/systemd/system/polysquid-reconcile.service`
 - Real-time request watcher: `/etc/systemd/system/polysquid-reconcile.path`
-- Systemd units: `/etc/systemd/system/squid-*.{service,timer}`
-- Log rotation: `/etc/logrotate.d/squid-*` and `/etc/logrotate.d/polysquid-update`
-- Update logs: `/var/log/polysquid-update.log`
+- Systemd units: `/etc/systemd/system/polysquid-*.{service,timer}`
+- Log rotation: `/etc/logrotate.d/polysquid-*` and `/etc/logrotate.d/polysquid-git-update`
+- Update logs: `/var/log/polysquid-git-update.log`
 
 ## Advanced Topics
 
@@ -360,27 +361,27 @@ on_calendar: "00:00..23:59:59"             # Every day (equivalent to no schedul
 
 ### Docker Image Configuration
 
-Polysquid defaults to `polysquid-squid:debian-openssl`, a local image built from `squid.Dockerfile`
+Polysquid defaults to `polysquid-proxy:debian-openssl`, a local image built from `proxy.Dockerfile`
 using Debian 12 with `squid-openssl`. This avoids GnuTLS chain-delivery issues on TLS-enabled proxy
 listeners and is built automatically by `install.sh`.
 
 To build it manually:
 
 ```bash
-docker build -t polysquid-squid:debian-openssl -f squid.Dockerfile .
+docker build -t polysquid-proxy:debian-openssl -f proxy.Dockerfile .
 ```
 
 To use a different image, override with the `POLYSQUID_IMAGE` environment variable:
 
 ```bash
-export POLYSQUID_IMAGE="polysquid-squid:debian-openssl"
+export POLYSQUID_IMAGE="polysquid-proxy:debian-openssl"
 python3 polysquid.py
 
 # Or inline at install time
-POLYSQUID_IMAGE="polysquid-squid:debian-openssl" sudo ./install.sh
+POLYSQUID_IMAGE="polysquid-proxy:debian-openssl" sudo ./install.sh
 
 # Check current containers
-docker ps --filter "name=squid_" --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}"
+docker ps --filter "name=polysquid_" --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}"
 ```
 
 ### Domain Filtering Rules
@@ -423,15 +424,15 @@ Example:
 
 ```bash
 # Check systemd status and logs
-sudo systemctl status squid-<servicename>.service
-sudo journalctl -u squid-<servicename>.service -n 20 -e
+sudo systemctl status polysquid-<servicename>.service
+sudo journalctl -u polysquid-<servicename>.service -n 20 -e
 ```
 
 ### Container crashes or exits
 
 ```bash
 # View container logs
-sudo docker logs squid_<servicename>
+sudo docker logs polysquid_<servicename>
 
 # Check if port is already in use
 sudo lsof -i :3128
@@ -450,7 +451,7 @@ sudo python3 /opt/polysquid/polysquid.py
 cd /opt/polysquid && git log -1 --oneline services.yaml
 
 # Verify the update timer is active
-sudo systemctl status polysquid-update.timer
+sudo systemctl status polysquid-git-update.timer
 ```
 
 ### Validation errors
@@ -484,12 +485,12 @@ sudo visudo  # Add: %docker ALL=(ALL) NOPASSWD: /usr/bin/docker, /bin/systemctl
 sudo systemctl daemon-reload
 
 # Disable and re-enable a timer
-sudo systemctl disable squid-<servicename>-start.timer
-sudo systemctl enable --now squid-<servicename>-start.timer
+sudo systemctl disable polysquid-<servicename>-start.timer
+sudo systemctl enable --now polysquid-<servicename>-start.timer
 
-# Stop all Squid services and clear stale containers
-sudo systemctl stop 'squid-*.service'
-sudo docker rm -f $(docker ps -a --filter "name=squid_" -q)
+# Stop all polysquid services and clear stale containers
+sudo systemctl stop 'polysquid-*.service'
+sudo docker rm -f $(docker ps -a --filter "name=polysquid_" -q)
 ```
 
 ## Self-Service Access Portal
@@ -531,13 +532,13 @@ self-service/
 │   ├── templates/
 │   │   └── portal.html     # Web UI
 │   ├── requirements.txt    # Python dependencies
-│   └── Dockerfile          # Container definition
+│   └── webapp.Dockerfile   # Container definition
 ├── install.sh              # Install/build/enable/start the self-service stack
 ├── uninstall.sh            # Disable/remove installed units and containers
 ├── build.sh                # Helper for manual build/start/stop/log workflows
 ├── whitelist-manager.py    # Helper to read request files
-├── polysquid-self-service.service       # systemd unit template
-├── polysquid-self-service-nginx.service # HTTPS proxy service
+├── polysquid-webapp.service         # systemd unit template (Flask app)
+├── polysquid-nginx.service          # systemd unit template (HTTPS proxy)
 ├── nginx/
 │   └── nginx.conf          # TLS reverse proxy config
 └── requests/               # Shared volume (prepared by install.sh)
@@ -558,7 +559,7 @@ sudo ./install.sh
 
 The installer:
 
-- Builds `polysquid-self-service:latest`
+- Builds `polysquid-webapp:latest`
 - Creates the `requests/` directory if missing
 - Renders systemd units using the current repository path
 - Installs the units into `/etc/systemd/system/`
@@ -573,12 +574,12 @@ For iterative local operations after installation, `build.sh` supports `build`, 
 curl -k https://localhost/
 
 # View status
-sudo systemctl status polysquid-self-service.service
-sudo systemctl status polysquid-self-service-nginx.service
+sudo systemctl status polysquid-webapp.service
+sudo systemctl status polysquid-nginx.service
 
 # View logs
-docker logs -f polysquid_self_service
-docker logs -f polysquid_self_service_nginx
+docker logs -f polysquid_webapp
+docker logs -f polysquid_nginx
 ```
 
 **4. Uninstall:**

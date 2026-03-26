@@ -3,11 +3,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-IMAGE_NAME="polysquid-self-service:latest"
-APP_CONTAINER="polysquid_self_service"
-NGINX_CONTAINER="polysquid_self_service_nginx"
-APP_UNIT="polysquid-self-service.service"
-NGINX_UNIT="polysquid-self-service-nginx.service"
+IMAGE_NAME="polysquid-webapp:latest"
+APP_CONTAINER="polysquid_webapp"
+NGINX_CONTAINER="polysquid_nginx"
+APP_UNIT="polysquid-webapp.service"
+NGINX_UNIT="polysquid-nginx.service"
 SYSTEMD_DIR="/etc/systemd/system"
 REQUESTS_DIR="$SCRIPT_DIR/requests"
 PURGE=false

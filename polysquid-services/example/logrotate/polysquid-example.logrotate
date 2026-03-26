@@ -1,4 +1,4 @@
-/opt/polysquid/squid-clients/example/logs/*.log {
+/opt/polysquid/polysquid-services/example/logs/*.log {
     daily
     rotate 30
     compress
@@ -8,6 +8,6 @@
     nocreate
     sharedscripts
     postrotate
-        /usr/bin/docker kill -s USR1 squid_example >/dev/null 2>&1 || true
+        /usr/bin/docker kill -s USR1 polysquid_example >/dev/null 2>&1 || true
     endscript
 }

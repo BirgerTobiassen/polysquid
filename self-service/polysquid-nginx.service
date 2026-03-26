@@ -1,7 +1,7 @@
 [Unit]
 Description=Self-Service HTTPS Reverse Proxy (Nginx)
-After=docker.service network-online.target polysquid-self-service.service
-Requires=docker.service polysquid-self-service.service
+After=docker.service network-online.target polysquid-webapp.service
+Requires=docker.service polysquid-webapp.service
 Wants=network-online.target
 
 [Service]
@@ -10,11 +10,11 @@ Restart=on-failure
 RestartSec=10
 TimeoutStopSec=30
 
-ExecStartPre=-/usr/bin/docker rm -f polysquid_self_service_nginx
+ExecStartPre=-/usr/bin/docker rm -f polysquid_nginx
 
 ExecStart=/usr/bin/docker run \
-  --name polysquid_self_service_nginx \
-  --network polysquid-self-service \
+  --name polysquid_nginx \
+  --network polysquid-net \
   -v /opt/polysquid/self-service/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
   -v /opt/polysquid/self-service/nginx/html/outside-subnet.html:/usr/share/nginx/html/outside-subnet.html:ro \
   -v /etc/polysquid/certs:/etc/nginx/certs:ro \
@@ -22,8 +22,8 @@ ExecStart=/usr/bin/docker run \
   -p 443:443 \
   nginx:1.27-alpine
 
-ExecStop=/usr/bin/docker stop -t 20 polysquid_self_service_nginx
-ExecStopPost=-/usr/bin/docker rm -f polysquid_self_service_nginx
+ExecStop=/usr/bin/docker stop -t 20 polysquid_nginx
+ExecStopPost=-/usr/bin/docker rm -f polysquid_nginx
 
 [Install]
 WantedBy=multi-user.target

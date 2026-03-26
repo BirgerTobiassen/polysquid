@@ -1,0 +1,21 @@
+[Unit]
+Description=Polysquid proxy instance for Example Service
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+Restart=no
+TimeoutStopSec=30
+# Ensure stale containers are removed before starting
+ExecStartPre=-/usr/bin/docker rm -f polysquid_example
+ExecStart=/usr/bin/docker run \
+  --name polysquid_example \
+  -v /opt/polysquid/polysquid-services/example/conf/squid.conf:/etc/squid/squid.conf \
+  -v /opt/polysquid/polysquid-services/example/logs:/var/log/squid \
+  -v /opt/polysquid/polysquid-services/example/cache:/var/spool/squid \
+  -p 3128:3128 \
+  polysquid-proxy:debian-openssl
+
+ExecStop=/usr/bin/docker stop -t 20 polysquid_example
+ExecStopPost=-/usr/bin/docker rm -f polysquid_example

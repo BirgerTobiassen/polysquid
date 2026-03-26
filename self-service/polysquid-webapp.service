@@ -13,22 +13,22 @@ TimeoutStopSec=30
 # Ensure stale container is removed before starting
 ExecStartPre=/usr/bin/mkdir -p /opt/polysquid/self-service/requests
 ExecStartPre=/usr/bin/chown -R 10001:10001 /opt/polysquid/self-service/requests
-ExecStartPre=-/usr/bin/docker rm -f polysquid_self_service
+ExecStartPre=-/usr/bin/docker rm -f polysquid_webapp
 
 # Start Flask app container
 ExecStart=/usr/bin/docker run \
-  --name polysquid_self_service \
-  --network polysquid-self-service \
+  --name polysquid_webapp \
+  --network polysquid-net \
   -v /opt/polysquid/self-service/requests:/shared/requests \
   -p 127.0.0.1:5000:5000 \
   -e REQUESTS_DIR=/shared/requests \
   -e REQUEST_PORT=5000 \
   -e LOG_LEVEL=INFO \
-  polysquid-self-service:latest
+  polysquid-webapp:latest
 
 # Stop the container gracefully
-ExecStop=/usr/bin/docker stop -t 20 polysquid_self_service
-ExecStopPost=-/usr/bin/docker rm -f polysquid_self_service
+ExecStop=/usr/bin/docker stop -t 20 polysquid_webapp
+ExecStopPost=-/usr/bin/docker rm -f polysquid_webapp
 
 [Install]
 WantedBy=multi-user.target

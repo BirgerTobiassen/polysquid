@@ -5,11 +5,11 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEBAPP_DIR="$SCRIPT_DIR/webapp"
-IMAGE_NAME="polysquid-self-service:latest"
+IMAGE_NAME="polysquid-webapp:latest"
 REQUESTS_DIR="$SCRIPT_DIR/requests"
 CERTS_DIR="/etc/polysquid/certs"
-SERVICE_FILE="$SCRIPT_DIR/polysquid-self-service.service"
-NGINX_SERVICE_FILE="$SCRIPT_DIR/polysquid-self-service-nginx.service"
+SERVICE_FILE="$SCRIPT_DIR/polysquid-webapp.service"
+NGINX_SERVICE_FILE="$SCRIPT_DIR/polysquid-nginx.service"
 SYSTEMD_DIR="/etc/systemd/system"
 
 usage() {
@@ -36,7 +36,7 @@ EOF
 
 build_image() {
     echo "🔨 Building Docker image: $IMAGE_NAME"
-    docker build -t "$IMAGE_NAME" "$WEBAPP_DIR"
+    docker build -t "$IMAGE_NAME" -f "$WEBAPP_DIR/webapp.Dockerfile" "$WEBAPP_DIR"
     echo "✅ Image built successfully"
 }
 
@@ -77,8 +77,8 @@ deploy_service() {
     create_certs_dir
     
     echo "🚀 Copying service file to $SYSTEMD_DIR..."
-    sudo cp "$SERVICE_FILE" "$SYSTEMD_DIR/polysquid-self-service.service"
-    sudo cp "$NGINX_SERVICE_FILE" "$SYSTEMD_DIR/polysquid-self-service-nginx.service"
+    sudo cp "$SERVICE_FILE" "$SYSTEMD_DIR/polysquid-webapp.service"
+    sudo cp "$NGINX_SERVICE_FILE" "$SYSTEMD_DIR/polysquid-nginx.service"
     
     echo "🔄 Reloading systemd..."
     sudo systemctl daemon-reload
@@ -86,68 +86,68 @@ deploy_service() {
     echo "✅ Service deployed successfully"
     echo ""
     echo "Next steps:"
-    echo "  sudo systemctl enable polysquid-self-service.service"
-    echo "  sudo systemctl enable polysquid-self-service-nginx.service"
-    echo "  sudo systemctl start polysquid-self-service.service"
-    echo "  sudo systemctl start polysquid-self-service-nginx.service"
-    echo "  sudo systemctl status polysquid-self-service.service"
-    echo "  sudo systemctl status polysquid-self-service-nginx.service"
+    echo "  sudo systemctl enable polysquid-webapp.service"
+    echo "  sudo systemctl enable polysquid-nginx.service"
+    echo "  sudo systemctl start polysquid-webapp.service"
+    echo "  sudo systemctl start polysquid-nginx.service"
+    echo "  sudo systemctl status polysquid-webapp.service"
+    echo "  sudo systemctl status polysquid-nginx.service"
 }
 
 start_service() {
     echo "🚀 Starting app + HTTPS proxy services..."
-    sudo systemctl start polysquid-self-service.service
-    sudo systemctl start polysquid-self-service-nginx.service
+    sudo systemctl start polysquid-webapp.service
+    sudo systemctl start polysquid-nginx.service
     echo "✅ Services started"
 }
 
 stop_service() {
     echo "⛔ Stopping app + HTTPS proxy services..."
-    sudo systemctl stop polysquid-self-service-nginx.service
-    sudo systemctl stop polysquid-self-service.service
+    sudo systemctl stop polysquid-nginx.service
+    sudo systemctl stop polysquid-webapp.service
     echo "✅ Services stopped"
 }
 
 restart_service() {
     echo "🔄 Restarting app + HTTPS proxy services..."
-    sudo systemctl restart polysquid-self-service.service
-    sudo systemctl restart polysquid-self-service-nginx.service
+    sudo systemctl restart polysquid-webapp.service
+    sudo systemctl restart polysquid-nginx.service
     echo "✅ Services restarted"
 }
 
 status_service() {
     echo "📊 App service status:"
-    sudo systemctl status polysquid-self-service.service || true
+    sudo systemctl status polysquid-webapp.service || true
     echo ""
     echo "📊 HTTPS proxy service status:"
-    sudo systemctl status polysquid-self-service-nginx.service || true
+    sudo systemctl status polysquid-nginx.service || true
     echo ""
     echo "📦 Docker containers:"
-    docker ps -a | grep -i polysquid_self_service || echo "  (not running)"
+    docker ps -a | grep -i polysquid_webapp || echo "  (not running)"
 }
 
 show_logs() {
     echo "📋 App logs (last 100):"
-    docker logs --tail 100 polysquid_self_service || echo "App container not running"
+    docker logs --tail 100 polysquid_webapp || echo "App container not running"
     echo ""
     echo "📋 HTTPS proxy logs (last 100):"
-    docker logs --tail 100 polysquid_self_service_nginx || echo "Proxy container not running"
+    docker logs --tail 100 polysquid_nginx || echo "Proxy container not running"
 }
 
 clean() {
     echo "🧹 Cleaning up..."
     
-    if docker ps -a | grep -q polysquid_self_service; then
+    if docker ps -a | grep -q polysquid_webapp; then
         echo "  Removing container..."
-        docker rm -f polysquid_self_service
+        docker rm -f polysquid_webapp
     fi
 
-    if docker ps -a | grep -q polysquid_self_service_nginx; then
+    if docker ps -a | grep -q polysquid_nginx; then
         echo "  Removing HTTPS proxy container..."
-        docker rm -f polysquid_self_service_nginx
+        docker rm -f polysquid_nginx
     fi
     
-    if docker images | grep -q "polysquid-self-service"; then
+    if docker images | grep -q "polysquid-webapp"; then
         echo "  Removing image..."
         docker rmi "$IMAGE_NAME"
     fi
