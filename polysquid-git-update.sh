@@ -5,7 +5,7 @@ LOG_FILE="/var/log/polysquid-update.log"
 TRUSTED_EXEC="/usr/local/lib/polysquid/polysquid.py"
 
 # Tag pattern to pull (e.g., "v1.*", "production-*", etc.)
-TAG_PATTERN="${POLYSQUID_TAG_PATTERN:-v*}"
+TAG_PATTERN="${POLYSQUID_TAG_PATTERN:-UiT-LabIT-v1.*}"
 
 cd "$REPO_DIR" || { echo "$(date): Failed to cd to $REPO_DIR" | tee -a "$LOG_FILE"; exit 1; }
 
