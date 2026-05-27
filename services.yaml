@@ -25,10 +25,10 @@ services:
 
 - name: "TEST3"
   port: 3131
-  use_tls: false
+  use_tls: true
   enabled: true
-  on_calendar:
-    shared: off_hours
+  allowed_ips:
+    - 10.252.2.0/24
 
 - name: "TEST_GUL"
   port: 3132
