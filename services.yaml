@@ -58,6 +58,19 @@ services:
     edl:
       - https://engine.edlmanager.com/v1/11b0bb2c-9795-47d9-94c1-54aa4d6e446e/  # External Data List (plaintext URL)
 
+- name: "TEST-echo-http"
+  port: 3135
+  use_tls: false
+  enabled: true
+  allowed_ips:
+    - 10.252.2.0/24
+
+- name: "TEST-est-echo-https"
+  port: 3136
+  use_tls: true
+  enabled: true
+  allowed_ips:
+    - 10.252.2.0/24
 
 shared:
   lists: 
