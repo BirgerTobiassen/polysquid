@@ -23,7 +23,7 @@ services:
       - whitelist2
       - fremover_list
 
-- name: "TEST3"
+- name: "TEST3ny"
   port: 3131
   use_tls: true
   enabled: true
