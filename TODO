@@ -1,0 +1,7 @@
+Ting som må implementeres
+1. 90 dagers logger
+2. Fikse 443 og 80
+
+Ting som kan hindre utilsiktet bruk av en squid
+1. Ny modus der squid er slått av fram til man starer den ved self service
+2. brukernavn og passord på squid

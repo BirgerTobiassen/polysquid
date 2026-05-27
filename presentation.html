@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Polysquid — Presentation</title>
+  <style>
+    /* ─── Reset & base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1a1d27;
+      --border:   #2e3347;
+      --accent:   #5b8dee;
+      --accent2:  #4ecdc4;
+      --accent3:  #ff6b6b;
+      --text:     #e5e7f0;
+      --muted:    #8b90a8;
+      --code-bg:  #0d1117;
+    }
+    html, body { height: 100%; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+
+    /* ─── Slide container ───────────────────────────────────────── */
+    .deck { width: 100vw; height: 100vh; position: relative; }
+    .slide {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+      padding: 6vh 8vw;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .slide.active { opacity: 1; pointer-events: auto; }
+    .slide.center { align-items: center; text-align: center; }
+
+    /* ─── Typography ────────────────────────────────────────────── */
+    .label {
+      font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--accent); font-weight: 700; margin-bottom: 0.75rem;
+    }
+    h1 { font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 800; line-height: 1.1; margin-bottom: 0.5rem; }
+    h2 { font-size: clamp(1.6rem, 4vw, 2.6rem); font-weight: 700; line-height: 1.15; margin-bottom: 1.5rem; color: var(--text); }
+    h3 { font-size: 1.1rem; font-weight: 600; color: var(--accent2); margin-bottom: 0.4rem; }
+    p, li { font-size: clamp(0.95rem, 1.8vw, 1.15rem); line-height: 1.7; color: var(--muted); }
+    li { margin-bottom: 0.55rem; list-style: none; padding-left: 1.4rem; position: relative; }
+    li::before { content: "▸"; position: absolute; left: 0; color: var(--accent); }
+    a { color: var(--accent); text-decoration: none; }
+    strong { color: var(--text); font-weight: 600; }
+
+    .hero-sub { font-size: clamp(1rem, 2.2vw, 1.35rem); color: var(--muted); max-width: 56ch; margin-bottom: 2rem; }
+
+    /* ─── Accent line ───────────────────────────────────────────── */
+    .rule { width: 3.5rem; height: 3px; background: var(--accent); border-radius: 2px; margin-bottom: 2rem; }
+
+    /* ─── Cards ─────────────────────────────────────────────────── */
+    .grid { display: grid; gap: 1.2rem; width: 100%; }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.4rem 1.6rem;
+    }
+    .card.accent-border { border-left: 3px solid var(--accent); }
+    .card.green-border  { border-left: 3px solid var(--accent2); }
+    .card.red-border    { border-left: 3px solid var(--accent3); }
+
+    /* ─── Code block ────────────────────────────────────────────── */
+    pre {
+      background: var(--code-bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.2rem 1.5rem; font-size: 0.88rem;
+      line-height: 1.65; color: #a8b4d8; overflow-x: auto; width: 100%;
+      font-family: "Fira Code", "Cascadia Code", monospace;
+    }
+    .kw  { color: #c792ea; } /* keyword */
+    .str { color: #c3e88d; } /* string  */
+    .cm  { color: #546e7a; font-style: italic; } /* comment */
+    .key { color: #82aaff; } /* yaml key */
+    .val { color: #f78c6c; } /* yaml value */
+
+    /* ─── Tag pills ─────────────────────────────────────────────── */
+    .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
+    .tag {
+      font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.75rem;
+      border-radius: 100px; border: 1px solid;
+    }
+    .tag-blue  { color: var(--accent);  border-color: var(--accent);  background: rgba(91,141,238,.12); }
+    .tag-teal  { color: var(--accent2); border-color: var(--accent2); background: rgba(78,205,196,.12); }
+    .tag-red   { color: var(--accent3); border-color: var(--accent3); background: rgba(255,107,107,.12); }
+
+    /* ─── Diagram ───────────────────────────────────────────────── */
+    .diagram {
+      display: flex; align-items: stretch; gap: 0; width: 100%;
+      border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    }
+    .diag-col {
+      flex: 1; padding: 1.2rem 1.4rem;
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .diag-col + .diag-col { border-left: 1px solid var(--border); }
+    .diag-col.mid { background: rgba(91,141,238,.06); }
+    .diag-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); font-weight: 700; margin-bottom: 0.4rem; }
+    .diag-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; padding: 0.5rem 0.8rem; font-size: 0.88rem; color: var(--text);
+    }
+    .arrow { font-size: 1.4rem; color: var(--accent); display: flex; align-items: center; padding: 0 0.3rem; }
+
+    /* ─── Big stat ───────────────────────────────────────────────── */
+    .stat-row { display: flex; gap: 2rem; margin-top: 1rem; }
+    .stat { text-align: center; }
+    .stat-num { font-size: 2.8rem; font-weight: 800; color: var(--accent); line-height: 1; }
+    .stat-lbl { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.3rem; }
+
+    /* ─── Navigation ────────────────────────────────────────────── */
+    #nav {
+      position: fixed; bottom: 2rem; right: 2.5rem; z-index: 100;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .nav-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px; padding: 0.5rem 1.1rem;
+      font-size: 0.9rem; cursor: pointer; transition: background 0.15s, border-color 0.15s;
+    }
+    .nav-btn:hover { background: var(--border); border-color: var(--accent); }
+    #counter { font-size: 0.82rem; color: var(--muted); min-width: 3.5rem; text-align: center; }
+
+    /* ─── Progress bar ──────────────────────────────────────────── */
+    #progress {
+      position: fixed; top: 0; left: 0; height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.35s ease;
+    }
+
+    /* ─── Slide number badge ───────────────────────────────────── */
+    .slide-num {
+      position: absolute; top: 1.5rem; right: 2rem;
+      font-size: 0.72rem; color: var(--border); letter-spacing: 0.06em;
+    }
+
+    /* ─── Title slide gradient text ─────────────────────────────── */
+    .gradient-text {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ─── Responsive tweaks ─────────────────────────────────────── */
+    @media (max-width: 700px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .diagram { flex-direction: column; }
+      .diag-col + .diag-col { border-left: none; border-top: 1px solid var(--border); }
+      .arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+<div id="progress"></div>
+
+<div class="deck">
+
+  <!-- ── 1. Title ─────────────────────────────────────────────── -->
+  <section class="slide center active" id="s1">
+    <div class="slide-num">1</div>
+    <div class="label">Open-source infrastructure tooling</div>
+    <h1 class="gradient-text">Polysquid</h1>
+    <p class="hero-sub">
+      A Python-based manager for deploying and operating <strong>multiple isolated Squid proxy instances</strong>
+      — declared in YAML, automated by systemd, containerised with Docker.
+    </p>
+    <div class="tags">
+      <span class="tag tag-blue">Python 3</span>
+      <span class="tag tag-blue">Squid</span>
+      <span class="tag tag-blue">Docker</span>
+      <span class="tag tag-teal">systemd</span>
+      <span class="tag tag-teal">YAML</span>
+      <span class="tag tag-red">Linux</span>
+    </div>
+  </section>
+
+  <!-- ── 2. Problem statement ──────────────────────────────────── -->
+  <section class="slide" id="s2">
+    <div class="slide-num">2</div>
+    <div class="label">The problem</div>
+    <h2>Managing Squid at Scale Is Hard</h2>
+    <div class="rule"></div>
+    <div class="grid grid-2">
+      <div class="card red-border">
+        <h3>Manual complexity</h3>
+        <ul>
+          <li>Each Squid instance needs its own config, service file, and log rotation</li>
+          <li>Configs drift between servers over time</li>
+          <li>No standard way to schedule proxy uptime windows</li>
+        </ul>
+      </div>
+      <div class="card red-border">
+        <h3>Operational risk</h3>
+        <ul>
+          <li>Ad-hoc changes bypass review — configs break silently</li>
+          <li>No audit trail for whitelist changes</li>
+          <li>Shared config files accidentally create allow-all policies</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 3. Solution ───────────────────────────────────────────── -->
+  <section class="slide" id="s3">
+    <div class="slide-num">3</div>
+    <div class="label">The solution</div>
+    <h2>One YAML File — Many Proxy Services</h2>
+    <div class="rule"></div>
+    <p style="margin-bottom:1.4rem;">Polysquid reads <strong>services.yaml</strong> and fully reconciles the desired state: containers, systemd units, ACLs, timers, and log rotation — every reconcile run.</p>
+    <div class="grid grid-3">
+      <div class="card accent-border">
+        <h3>Declarative</h3>
+        <p>Define services in YAML. Polysquid figures out what needs to change.</p>
+      </div>
+      <div class="card accent-border">
+        <h3>Isolated</h3>
+        <p>Each service runs in its own Docker container with dedicated config, logs, and cache.</p>
+      </div>
+      <div class="card accent-border">
+        <h3>Automated</h3>
+        <p>Git-triggered reconciliation every 5 minutes. Zero manual intervention after initial deploy.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 4. Architecture diagram ───────────────────────────────── -->
+  <section class="slide" id="s4">
+    <div class="slide-num">4</div>
+    <div class="label">Architecture</div>
+    <h2>How Polysquid Works</h2>
+    <div class="rule"></div>
+    <div class="diagram">
+      <div class="diag-col">
+        <div class="diag-label">Input</div>
+        <div class="diag-item">📄 services.yaml</div>
+        <div class="diag-item">🌐 EDL URLs (external domain lists)</div>
+        <div class="diag-item">📁 Self-service request files</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="diag-col mid">
+        <div class="diag-label">polysquid.py (reconciler)</div>
+        <div class="diag-item">Validate + resolve config</div>
+        <div class="diag-item">Generate squid.conf</div>
+        <div class="diag-item">Write systemd units</div>
+        <div class="diag-item">Manage Docker containers</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="diag-col">
+        <div class="diag-label">Output</div>
+        <div class="diag-item">🐳 Docker containers (one per service)</div>
+        <div class="diag-item">⚙️  systemd .service + .timer units</div>
+        <div class="diag-item">🔄 logrotate configs</div>
+        <div class="diag-item">📋 ACL rules (squid.conf)</div>
+      </div>
+    </div>
+    <p style="margin-top:1.2rem;font-size:0.9rem;">Triggered by: <strong>Git timer</strong> (every 5 min) · <strong>systemd path unit</strong> (self-service on file change) · <strong>manual run</strong></p>
+  </section>
+
+  <!-- ── 5. YAML config example ────────────────────────────────── -->
+  <section class="slide" id="s5">
+    <div class="slide-num">5</div>
+    <div class="label">Configuration</div>
+    <h2>Declarative YAML Services</h2>
+    <div class="rule"></div>
+    <pre><span class="key">services</span><span class="val">:</span>
+  <span class="cm"># Scheduled corporate proxy — weekdays 8am–6pm, TLS, IP-restricted</span>
+  - <span class="key">name</span><span class="val">:</span> <span class="str">"Corporate Proxy"</span>
+    <span class="key">port</span><span class="val">:</span> <span class="val">3128</span>
+    <span class="key">use_tls</span><span class="val">:</span> <span class="kw">true</span>
+    <span class="key">enabled</span><span class="val">:</span> <span class="kw">true</span>
+    <span class="key">on_calendar</span><span class="val">:</span>
+      <span class="key">string</span><span class="val">:</span> <span class="str">"Mon..Fri 08:00..18:00"</span>
+    <span class="key">allowed_ips</span><span class="val">:</span>
+      - <span class="str">192.168.1.0/24</span>
+    <span class="key">whitelists</span><span class="val">:</span>
+      <span class="key">shared</span><span class="val">:</span>
+        - <span class="str">office_sites</span>
+      <span class="key">edl</span><span class="val">:</span>
+        - <span class="str">https://engine.edlmanager.com/v1/abc123/</span>  <span class="cm"># live external list</span></pre>
+  </section>
+
+  <!-- ── 6. Domain filtering ───────────────────────────────────── -->
+  <section class="slide" id="s6">
+    <div class="slide-num">6</div>
+    <div class="label">Access control</div>
+    <h2>Flexible, Fail-Closed Domain Filtering</h2>
+    <div class="rule"></div>
+    <div class="grid grid-2">
+      <div>
+        <ul style="margin-bottom:1.2rem;">
+          <li><strong>Inline lists</strong> — literal domains in YAML</li>
+          <li><strong>Shared lists</strong> — reusable named lists, referenced by multiple services</li>
+          <li><strong>EDL (External Data Lists)</strong> — fetched from a URL at every reconcile</li>
+          <li><strong>Fail-closed</strong> — if <code>whitelists:</code> key is present, traffic is denied by default, even if the resolved list is empty</li>
+          <li><strong>Overlap-safe</strong> — child domains automatically pruned when parent is already listed</li>
+        </ul>
+        <div class="tags">
+          <span class="tag tag-red">Deny-by-default</span>
+          <span class="tag tag-teal">EDLManager compatible</span>
+          <span class="tag tag-blue">Subdomain matching</span>
+        </div>
+      </div>
+      <pre style="font-size:0.8rem;"><span class="key">shared</span><span class="val">:</span>
+  <span class="key">lists</span><span class="val">:</span>
+    <span class="key">office_sites</span><span class="val">:</span>
+      - <span class="str">.github.com</span>
+      - <span class="str">.npm.org</span>
+    <span class="key">media</span><span class="val">:</span>
+      - <span class="str">.nrk.no</span>
+      - <span class="str">.tv2.no</span>
+
+<span class="cm"># Service uses multiple sources:</span>
+<span class="key">whitelists</span><span class="val">:</span>
+  <span class="key">list</span><span class="val">:</span>
+    - <span class="str">.internal.corp</span>
+  <span class="key">shared</span><span class="val">:</span>
+    - <span class="str">office_sites</span>
+  <span class="key">edl</span><span class="val">:</span>
+    - <span class="str">https://example.com/list.txt</span></pre>
+    </div>
+  </section>
+
+  <!-- ── 7. Scheduling ─────────────────────────────────────────── -->
+  <section class="slide" id="s7">
+    <div class="slide-num">7</div>
+    <div class="label">Scheduling</div>
+    <h2>systemd-Native Scheduling</h2>
+    <div class="rule"></div>
+    <div class="grid grid-2">
+      <div>
+        <p style="margin-bottom:1rem;">Services with <strong>on_calendar</strong> are timer-managed and <em>never</em> fall through to always-on — even if the calendar resolves empty.</p>
+        <ul>
+          <li>Start timer fires at window open</li>
+          <li>Stop timer fires at window close</li>
+          <li>Boot reconciler starts service if boot time is inside an active window</li>
+          <li>Shared calendar entries — define once, reference everywhere</li>
+        </ul>
+      </div>
+      <pre style="font-size:0.82rem;"><span class="cm"># Structured on_calendar</span>
+<span class="key">on_calendar</span><span class="val">:</span>
+  <span class="key">string</span><span class="val">:</span> <span class="str">"Mon..Fri 08:00..18:00"</span>
+
+<span class="cm"># ...or reference a shared calendar</span>
+<span class="key">on_calendar</span><span class="val">:</span>
+  <span class="key">shared</span><span class="val">:</span> <span class="str">work_hours</span>
+
+<span class="key">shared</span><span class="val">:</span>
+  <span class="key">calendars</span><span class="val">:</span>
+    <span class="key">work_hours</span><span class="val">:</span>
+      <span class="str">"Mon..Fri 08:00..18:00"</span>
+    <span class="key">off_hours</span><span class="val">:</span>
+      <span class="str">"Mon..Fri 18:00..08:00"</span></pre>
+    </div>
+  </section>
+
+  <!-- ── 8. Self-service portal ────────────────────────────────── -->
+  <section class="slide" id="s8">
+    <div class="slide-num">8</div>
+    <div class="label">Self-service</div>
+    <h2>End-User Access Portal</h2>
+    <div class="rule"></div>
+    <div class="grid grid-2">
+      <div>
+        <p style="margin-bottom:1rem;">The optional self-service component lets <strong>end users request proxy access</strong> without admin involvement.</p>
+        <ul>
+          <li>Flask web app behind an nginx TLS reverse proxy</li>
+          <li>User specifies port + justification; request saved as a YAML file</li>
+          <li>systemd path unit detects new request file and triggers immediate reconciliation</li>
+          <li>IP-subnet gating — portal only reachable from allowed networks (<code>outside-subnet.html</code> fallback)</li>
+          <li>Admin reviews request files via <code>whitelist-manager.py</code> CLI helper</li>
+        </ul>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr;">
+        <div class="card green-border">
+          <h3>Components</h3>
+          <p>Flask app · nginx · polysquid-self-service.service · polysquid-path.service</p>
+        </div>
+        <div class="card green-border">
+          <h3>Security</h3>
+          <p>TLS everywhere · subnet firewall · read-only request files · no root in webapp container</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 9. Security & reliability ─────────────────────────────── -->
+  <section class="slide" id="s9">
+    <div class="slide-num">9</div>
+    <div class="label">Security &amp; reliability</div>
+    <h2>Built-In Safeguards</h2>
+    <div class="rule"></div>
+    <div class="grid grid-3">
+      <div class="card accent-border">
+        <h3>Fail-Closed ACLs</h3>
+        <p>Declaring <code>whitelists:</code> triggers deny-by-default — no misconfigured allow-all is possible.</p>
+      </div>
+      <div class="card accent-border">
+        <h3>Timer Isolation</h3>
+        <p>Calendar-managed services cannot become always-on even if the calendar entry is invalid.</p>
+      </div>
+      <div class="card accent-border">
+        <h3>Domain Normalisation</h3>
+        <p>Labels validated, trailing dots stripped, wildcard <code>*.</code> mapped to Squid's <code>.</code> prefix. Squid config never receives malformed entries.</p>
+      </div>
+      <div class="card green-border">
+        <h3>Overlap Pruning</h3>
+        <p>Child domains removed when a parent already covers them — prevents Squid fatal errors on overlapping ACL entries.</p>
+      </div>
+      <div class="card green-border">
+        <h3>Chunked ACL Output</h3>
+        <p>Large whitelists split into 200-entry <code>acl whitelist dstdomain</code> lines — avoids Squid line-length parse failures.</p>
+      </div>
+      <div class="card green-border">
+        <h3>EDL Resilience</h3>
+        <p>EDL fetch failures log an error and leave the service deny-by-default. Cached per-reconcile to avoid redundant requests.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 10. Automation ────────────────────────────────────────── -->
+  <section class="slide" id="s10">
+    <div class="slide-num">10</div>
+    <div class="label">Operations</div>
+    <h2>Fully Automated Lifecycle</h2>
+    <div class="rule"></div>
+    <div class="grid grid-2">
+      <ul>
+        <li><strong>Install once</strong> — <code>sudo ./install.sh</code> sets everything up</li>
+        <li><strong>Git-driven deploys</strong> — timer polls Git every 5 min; changed <code>services.yaml</code> triggers trusted executor</li>
+        <li><strong>Zero-downtime updates</strong> — only affected services are restarted</li>
+        <li><strong>Log rotation</strong> — per-service logrotate configs, daily, 30-day retention</li>
+        <li><strong>Boot recovery</strong> — reconcile on boot restores correct state for all windowed services</li>
+        <li><strong>Manual override</strong> — <code>sudo python3 polysquid.py --verbose</code> anytime</li>
+      </ul>
+      <pre style="font-size:0.82rem;"><span class="cm"># View all managed units</span>
+systemctl list-units <span class="str">"polysquid-*"</span>
+
+<span class="cm"># Check update timer</span>
+systemctl status polysquid-git-update.timer
+
+<span class="cm"># View generated Squid config</span>
+cat /opt/polysquid/polysquid-services/ \
+    &lt;service&gt;/conf/squid.conf
+
+<span class="cm"># Tail container logs</span>
+docker logs polysquid_&lt;service&gt; -f</pre>
+    </div>
+  </section>
+
+  <!-- ── 11. Tech stack ────────────────────────────────────────── -->
+  <section class="slide" id="s11">
+    <div class="slide-num">11</div>
+    <div class="label">Technical stack</div>
+    <h2>Technology Choices</h2>
+    <div class="rule"></div>
+    <div class="grid grid-3">
+      <div class="card">
+        <h3>Runtime</h3>
+        <p>Python 3 · PyYAML · urllib (stdlib only — no extra HTTP deps)</p>
+      </div>
+      <div class="card">
+        <h3>Proxy engine</h3>
+        <p>Squid 5+ in Docker (Debian 12, squid-openssl) — avoids GnuTLS chain-delivery bugs on TLS listeners</p>
+      </div>
+      <div class="card">
+        <h3>Init system</h3>
+        <p>systemd — services, timers, path units, and logrotate all generated by the reconciler</p>
+      </div>
+      <div class="card">
+        <h3>Self-service</h3>
+        <p>Flask · nginx (TLS reverse proxy) · subnet-gated HTML fallback</p>
+      </div>
+      <div class="card">
+        <h3>Secrets / Certs</h3>
+        <p>Let's Encrypt (HTTP-01 or DNS-01) · shared cert path <code>/etc/polysquid/certs/</code></p>
+      </div>
+      <div class="card">
+        <h3>Config control</h3>
+        <p>Git repository — <code>services.yaml</code> is the single source of truth, version-controlled</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 12. Summary / closing ─────────────────────────────────── -->
+  <section class="slide center" id="s12">
+    <div class="slide-num">12</div>
+    <div class="label">Summary</div>
+    <h2 style="margin-bottom:0.5rem;">Polysquid in a Nutshell</h2>
+    <div class="rule" style="margin:0 auto 1.6rem;"></div>
+    <div class="stat-row" style="margin-bottom:2rem;">
+      <div class="stat">
+        <div class="stat-num">1</div>
+        <div class="stat-lbl">YAML file</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">N</div>
+        <div class="stat-lbl">Squid services</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">0</div>
+        <div class="stat-lbl">Manual steps</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">∅</div>
+        <div class="stat-lbl">Downtime on update</div>
+      </div>
+    </div>
+    <div class="tags" style="justify-content:center;">
+      <span class="tag tag-blue">Declarative config</span>
+      <span class="tag tag-blue">Git-driven deploys</span>
+      <span class="tag tag-teal">Fail-closed security</span>
+      <span class="tag tag-teal">EDL integration</span>
+      <span class="tag tag-red">systemd timers</span>
+      <span class="tag tag-red">Self-service portal</span>
+    </div>
+  </section>
+
+</div><!-- /.deck -->
+
+<!-- ─── Navigation ──────────────────────────────────────────── -->
+<div id="nav">
+  <button class="nav-btn" id="prev">← Prev</button>
+  <span id="counter">1 / 12</span>
+  <button class="nav-btn" id="next">Next →</button>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total   = slides.length;
+  let   current = 0;
+
+  const progress = document.getElementById('progress');
+  const counter  = document.getElementById('counter');
+
+  function show(idx) {
+    slides[current].classList.remove('active');
+    current = (idx + total) % total;
+    slides[current].classList.add('active');
+    counter.textContent = `${current + 1} / ${total}`;
+    progress.style.width = `${((current + 1) / total) * 100}%`;
+  }
+
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); show(current + 1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                    { e.preventDefault(); show(current - 1); }
+  });
+
+  // Touch swipe support
+  let touchX = null;
+  document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; });
+  document.addEventListener('touchend',   e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 40) show(dx < 0 ? current + 1 : current - 1);
+    touchX = null;
+  });
+
+  // Init
+  show(0);
+</script>
+</body>
+</html>
