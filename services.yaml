@@ -23,12 +23,12 @@ services:
       - whitelist2
       - fremover_list
 
-- name: "TEST3ny"
+- name: "TEST_ITA-vpn"
   port: 3131
   use_tls: true
   enabled: true
   allowed_ips:
-    - 10.252.2.0/24
+    - 129.242.14.96/28
 
 - name: "TEST_GUL"
   port: 3132
