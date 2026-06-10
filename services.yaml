@@ -72,6 +72,20 @@ services:
   allowed_ips:
     - 10.252.2.0/24
 
+- name: "TEST-veeamrgs-http"
+  port: 3137
+  use_tls: false
+  enabled: true
+  allowed_ips:
+    - 129.242.3.110/32
+
+- name: "TEST-veeamrgs-https"
+  port: 3138
+  use_tls: true
+  enabled: true
+  allowed_ips:
+    - 129.242.3.110/32
+
 shared:
   lists: 
     whitelist1:
