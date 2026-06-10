@@ -529,6 +529,11 @@ def generate_squid_conf(
 ) -> bool:
     """
     Build squid.conf with deny-by-default access control:
+    - Expose one listener on container port 3128.
+    - If TLS is enabled, use an HTTPS proxy listener on 3128.
+    - If TLS is disabled, use an HTTP proxy listener on 3128.
+    - Allow proxying traffic to destination ports 21, 80 and 443.
+    - Restrict CONNECT tunnels to destination port 443.
     - If whitelists is configured: only allow those domains, deny everything else.
     - If no whitelists is configured: allow all from allowed_ips, deny everything else.
     - Combine source and destination ACLs so source restrictions aren't bypassed.
@@ -539,6 +544,16 @@ def generate_squid_conf(
         lines.append("https_port 3128 tls-cert=/etc/squid/tls/fullchain.pem tls-key=/etc/squid/tls/privkey.pem")
     else:
         lines.append("http_port 3128")
+
+    # Destination port policy: web only.
+    lines.append("acl SSL_ports port 443")
+    lines.append("acl Safe_ports port 21")
+    lines.append("acl Safe_ports port 80")
+    lines.append("acl Safe_ports port 443")
+    lines.append("acl CONNECT method CONNECT")
+    lines.append("http_access deny !Safe_ports")
+    lines.append("http_access deny CONNECT !SSL_ports")
+
     # ACLs
     if allowed_ips:
         lines.append("acl allowed_ips src " + " ".join(allowed_ips))
