@@ -79,6 +79,16 @@ services:
   allowed_ips:
     - 129.242.3.110/32
 
+
+- name: "LabIT-Librina"
+  port: 3138
+  use_tls: true
+  enabled: true
+  whitelists:
+    edl:
+      - https://engine.edlmanager.com/v1/09a61581-53f5-4706-ad6a-92c4473ab7fc/  # External Data List (plaintext URL)
+
+
 shared:
   lists: 
     whitelist1:
