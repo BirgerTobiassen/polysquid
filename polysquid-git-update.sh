@@ -1,11 +1,12 @@
 #!/bin/bash
 
+set -o pipefail
+
 REPO_DIR="/opt/polysquid"
 LOG_FILE="/var/log/polysquid-git-update.log"
 TRUSTED_EXEC="/usr/local/lib/polysquid/polysquid.py"
 
-# Tag pattern to pull (e.g., "v1.*", "production-*", etc.)
-TAG_PATTERN="${POLYSQUID_TAG_PATTERN:-UiT-LabIT-v1.*}"
+GIT_BRANCH_FILE="/etc/polysquid/git-branch"
 
 cd "$REPO_DIR" || { echo "$(date): Failed to cd to $REPO_DIR" | tee -a "$LOG_FILE"; exit 1; }
 
@@ -14,54 +15,78 @@ if [ ! -x "$TRUSTED_EXEC" ]; then
     exit 1
 fi
 
-# Fetch latest tags from remote
-if ! git fetch --tags --quiet origin 2>/dev/null; then
-    echo "$(date): Warning: Could not fetch tags from remote" | tee -a "$LOG_FILE"
+CONFIGURED_GIT_BRANCH=""
+if [ -f "$GIT_BRANCH_FILE" ]; then
+    IFS= read -r CONFIGURED_GIT_BRANCH < "$GIT_BRANCH_FILE" || true
 fi
 
-# Get current tag on HEAD
-current_tag=$(git describe --tags --always 2>/dev/null || echo "")
-
-# Get latest tag matching the pattern
-latest_tag=$(git tag -l "$TAG_PATTERN" --sort=-version:refname --merged origin/HEAD 2>/dev/null | head -1)
-
-if [ -z "$latest_tag" ]; then
-    echo "$(date): No tags found matching pattern '$TAG_PATTERN'" | tee -a "$LOG_FILE"
-    exit 0
-fi
-
-echo "$(date): Current tag: $current_tag, Latest tag: $latest_tag (pattern: $TAG_PATTERN)" | tee -a "$LOG_FILE"
-
-# Only proceed if tag has changed
-if [ "$current_tag" = "$latest_tag" ]; then
-    echo "$(date): Already at latest tag, no update needed" | tee -a "$LOG_FILE"
-    exit 0
-fi
-
-# Fetch and checkout the target tag
-if ! git fetch --quiet --depth=1 origin tag "$latest_tag"; then
-    echo "$(date): Failed to fetch tag $latest_tag from remote" | tee -a "$LOG_FILE"
-    exit 1
-fi
-
-if ! git checkout --quiet "$latest_tag"; then
-    echo "$(date): Failed to checkout tag $latest_tag" | tee -a "$LOG_FILE"
-    exit 1
-fi
-
-echo "$(date): Checked out tag $latest_tag" | tee -a "$LOG_FILE"
-
-# Get service config hash from new tag
-new_hash=$(git rev-parse HEAD:services.yaml 2>/dev/null || echo "")
-
-# Reconcile when tag changed (services.yaml is now at the new tag's version)
-if [ -n "$new_hash" ]; then
-    echo "$(date): Reconcile trigger detected (tag updated: $current_tag -> $latest_tag), running trusted polysquid executor" | tee -a "$LOG_FILE"
-    if /usr/bin/python3 "$TRUSTED_EXEC" --config "$REPO_DIR/services.yaml" --base-dir "$REPO_DIR" 2>&1 | tee -a "$LOG_FILE"; then
-        echo "$(date): trusted polysquid executor completed successfully" | tee -a "$LOG_FILE"
-    else
-        echo "$(date): trusted polysquid executor failed with exit code $?" | tee -a "$LOG_FILE"
+if [ -z "$CONFIGURED_GIT_BRANCH" ]; then
+    remote_head=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD || true)
+    if [ -z "$remote_head" ]; then
+        if ! git remote set-head origin --auto >/dev/null; then
+            echo "$(date): Could not determine origin's default branch" | tee -a "$LOG_FILE"
+            exit 1
+        fi
+        remote_head=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD || true)
     fi
+    case "$remote_head" in
+        origin/*) CONFIGURED_GIT_BRANCH="${remote_head#origin/}" ;;
+        *)
+            echo "$(date): Could not determine origin's default branch" | tee -a "$LOG_FILE"
+            exit 1
+            ;;
+    esac
+fi
+
+if ! git check-ref-format "refs/heads/$CONFIGURED_GIT_BRANCH"; then
+    echo "$(date): Invalid configured branch '$CONFIGURED_GIT_BRANCH'" | tee -a "$LOG_FILE"
+    exit 1
+fi
+
+if ! git fetch --quiet --no-tags origin "+refs/heads/$CONFIGURED_GIT_BRANCH:refs/remotes/origin/$CONFIGURED_GIT_BRANCH"; then
+    echo "$(date): Could not fetch branch '$CONFIGURED_GIT_BRANCH' from origin" | tee -a "$LOG_FILE"
+    exit 1
+fi
+
+current_commit=$(git rev-parse HEAD 2>/dev/null || echo "")
+target_ref="refs/remotes/origin/$CONFIGURED_GIT_BRANCH"
+target_commit=$(git rev-parse "$target_ref^{commit}" 2>/dev/null || echo "")
+if [ -z "$target_commit" ]; then
+    echo "$(date): Could not resolve branch '$CONFIGURED_GIT_BRANCH'" | tee -a "$LOG_FILE"
+    exit 1
+fi
+
+current_branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || echo "")
+if [ "$current_commit" = "$target_commit" ] && [ "$current_branch" = "$CONFIGURED_GIT_BRANCH" ]; then
+    echo "$(date): Already up to date on branch '$CONFIGURED_GIT_BRANCH'" | tee -a "$LOG_FILE"
+    exit 0
+fi
+
+if ! git checkout --quiet -B "$CONFIGURED_GIT_BRANCH" "$target_ref"; then
+    echo "$(date): Failed to check out branch '$CONFIGURED_GIT_BRANCH'" | tee -a "$LOG_FILE"
+    exit 1
+fi
+
+echo "$(date): Checked out branch '$CONFIGURED_GIT_BRANCH' ($current_commit -> $target_commit)" | tee -a "$LOG_FILE"
+if [ "$current_commit" = "$target_commit" ]; then
+    echo "$(date): Reattached to branch '$CONFIGURED_GIT_BRANCH'; no config change to reconcile" | tee -a "$LOG_FILE"
+    exit 0
+fi
+
+if [ ! -f "$REPO_DIR/services.yaml" ]; then
+    echo "$(date): services.yaml not found after checking out '$CONFIGURED_GIT_BRANCH'" | tee -a "$LOG_FILE"
+    exit 1
+fi
+
+echo "$(date): Branch updated, running trusted polysquid executor" | tee -a "$LOG_FILE"
+if /usr/bin/python3 "$TRUSTED_EXEC" --config "$REPO_DIR/services.yaml" --base-dir "$REPO_DIR" 2>&1 | tee -a "$LOG_FILE"; then
+    echo "$(date): trusted polysquid executor completed successfully" | tee -a "$LOG_FILE"
 else
-    echo "$(date): No changes to services.yaml" | tee -a "$LOG_FILE"
+    pipeline_status=("${PIPESTATUS[@]}")
+    result="${pipeline_status[0]}"
+    if [ "$result" -eq 0 ]; then
+        result="${pipeline_status[1]}"
+    fi
+    echo "$(date): trusted polysquid executor failed with exit code $result" | tee -a "$LOG_FILE"
+    exit "$result"
 fi

@@ -81,9 +81,25 @@ This sets up:
 
 - Repository at `/opt/polysquid`
 - Systemd timer checking for updates every 5 minutes
+- Per-server Git branch selection
 - Automated redeployment on `services.yaml` changes
 - Log rotation for update logs
 - An initial reconciliation run so enabled services start immediately after install
+
+To have this server follow a specific branch, pass its name during installation:
+
+```bash
+sudo ./install.sh --branch production
+```
+
+Each server fetches its configured branch every five minutes and deploys new
+commits automatically. You can use a different branch per server. The branch
+is stored locally in `/etc/polysquid/git-branch`; rerun the installer with a
+different `--branch` to switch branches. Without an explicit branch, the
+installer selects the repository's default branch. Tags are not fetched or
+used. On an existing installation, rerun the installer with `--branch` to
+install the branch-only updater; any old `/etc/polysquid/git-ref` setting is
+ignored.
 
 ### 2. Configure
 
@@ -345,6 +361,7 @@ polysquid/
 **Installed Locations** (when using install.sh):
 
 - Repository: `/opt/polysquid/`
+- Selected Git branch: `/etc/polysquid/git-branch`
 - Trusted runtime scripts: `/usr/local/lib/polysquid/polysquid.py` and `/usr/local/lib/polysquid/polysquid-git-update.sh`
 - Systemd units: `/etc/systemd/system/polysquid-*.{service,timer}`
 - Log rotation: `/etc/logrotate.d/polysquid-*` and `/etc/logrotate.d/polysquid-git-update`

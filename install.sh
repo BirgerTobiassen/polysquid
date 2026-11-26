@@ -14,6 +14,7 @@ TRUSTED_DIR="/usr/local/lib/polysquid"
 TRUSTED_EXEC="${TRUSTED_DIR}/polysquid.py"
 TRUSTED_UPDATE="${TRUSTED_DIR}/polysquid-git-update.sh"
 CERTS_DIR="/etc/polysquid/certs"
+GIT_BRANCH_FILE="/etc/polysquid/git-branch"
 TIMER_INTERVAL="*-*-* *:0/5:00"  # Every 5 minutes
 
 # Check if running as root
@@ -22,15 +23,64 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Clone or update the repository
+REQUESTED_GIT_BRANCH=""
+if [ "$#" -gt 0 ]; then
+    if [ "$#" -ne 2 ] || [ "$1" != "--branch" ]; then
+        echo "Usage: sudo $0 [--branch <branch>]" >&2
+        exit 1
+    fi
+    REQUESTED_GIT_BRANCH="$2"
+    if ! git check-ref-format "refs/heads/$REQUESTED_GIT_BRANCH"; then
+        echo "Invalid Git branch name: $REQUESTED_GIT_BRANCH" >&2
+        exit 1
+    fi
+fi
+
+CONFIGURED_GIT_BRANCH="$REQUESTED_GIT_BRANCH"
+if [ -z "$CONFIGURED_GIT_BRANCH" ] && [ -f "$GIT_BRANCH_FILE" ]; then
+    IFS= read -r CONFIGURED_GIT_BRANCH < "$GIT_BRANCH_FILE" || true
+fi
+
+# Clone the repository if needed.
 if [ ! -d "$REPO_DIR/.git" ]; then
     echo "Cloning repository to $REPO_DIR..."
-    git clone "$REPO_URL" "$REPO_DIR"
-else
-    echo "Repository already exists, pulling latest changes..."
-    cd "$REPO_DIR"
-    git pull
+    git clone --no-tags "$REPO_URL" "$REPO_DIR"
 fi
+
+cd "$REPO_DIR"
+if [ -z "$CONFIGURED_GIT_BRANCH" ]; then
+    remote_head=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD || true)
+    if [ -z "$remote_head" ]; then
+        git remote set-head origin --auto >/dev/null
+        remote_head=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD || true)
+    fi
+    case "$remote_head" in
+        origin/*) CONFIGURED_GIT_BRANCH="${remote_head#origin/}" ;;
+        *)
+            echo "Could not determine origin's default branch." >&2
+            exit 1
+            ;;
+    esac
+fi
+
+if ! git fetch --quiet --no-tags origin "+refs/heads/$CONFIGURED_GIT_BRANCH:refs/remotes/origin/$CONFIGURED_GIT_BRANCH"; then
+    echo "Could not fetch branch '$CONFIGURED_GIT_BRANCH' from origin." >&2
+    exit 1
+fi
+if ! git checkout --quiet -B "$CONFIGURED_GIT_BRANCH" "refs/remotes/origin/$CONFIGURED_GIT_BRANCH"; then
+    echo "Could not check out branch '$CONFIGURED_GIT_BRANCH'." >&2
+    exit 1
+fi
+
+mkdir -p "$(dirname "$GIT_BRANCH_FILE")"
+printf '%s\n' "$CONFIGURED_GIT_BRANCH" > "$GIT_BRANCH_FILE"
+chmod 644 "$GIT_BRANCH_FILE"
+if [ -n "$REQUESTED_GIT_BRANCH" ]; then
+    echo "Selected Git branch: $CONFIGURED_GIT_BRANCH"
+else
+    echo "Following Git branch: $CONFIGURED_GIT_BRANCH"
+fi
+
 chown -R root:root "$REPO_DIR"
 
 # Install a trusted, root-owned executor outside the git working tree.
@@ -99,6 +149,9 @@ echo "Trusted executor installed at: ${TRUSTED_EXEC}"
 echo "Trusted updater installed at: ${TRUSTED_UPDATE}"
 echo "Shared cert directory prepared at: ${CERTS_DIR}"
 echo "Enabled services have been reconciled and started where applicable."
+if [ -n "$CONFIGURED_GIT_BRANCH" ]; then
+    echo "Automated updates follow Git branch: ${CONFIGURED_GIT_BRANCH}"
+fi
 echo "The service will check for updates to services.yaml every 5 minutes."
 echo "To check status: systemctl status ${SERVICE_NAME}.timer"
 echo "To view logs: journalctl -u ${SERVICE_NAME}.service or tail /var/log/polysquid-git-update.log"
