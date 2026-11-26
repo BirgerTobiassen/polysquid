@@ -36,9 +36,14 @@ if [ "$#" -gt 0 ]; then
     fi
 fi
 
-CONFIGURED_GIT_BRANCH="$REQUESTED_GIT_BRANCH"
-if [ -z "$CONFIGURED_GIT_BRANCH" ] && [ -f "$GIT_BRANCH_FILE" ]; then
-    IFS= read -r CONFIGURED_GIT_BRANCH < "$GIT_BRANCH_FILE" || true
+if [ -n "$REQUESTED_GIT_BRANCH" ]; then
+    CONFIGURED_GIT_BRANCH="$REQUESTED_GIT_BRANCH"
+else
+    CONFIGURED_GIT_BRANCH="$(hostname -s)"
+    if ! git check-ref-format "refs/heads/$CONFIGURED_GIT_BRANCH"; then
+        echo "Hostname does not produce a valid Git branch name: $CONFIGURED_GIT_BRANCH" >&2
+        exit 1
+    fi
 fi
 
 # Clone the repository if needed.
@@ -48,28 +53,43 @@ if [ ! -d "$REPO_DIR/.git" ]; then
 fi
 
 cd "$REPO_DIR"
-if [ -z "$CONFIGURED_GIT_BRANCH" ]; then
+if git fetch --quiet --no-tags origin "+refs/heads/$CONFIGURED_GIT_BRANCH:refs/remotes/origin/$CONFIGURED_GIT_BRANCH" 2>/dev/null; then
+    if ! git checkout --quiet -B "$CONFIGURED_GIT_BRANCH" "refs/remotes/origin/$CONFIGURED_GIT_BRANCH"; then
+        echo "Could not check out branch '$CONFIGURED_GIT_BRANCH'." >&2
+        exit 1
+    fi
+    echo "Using existing remote branch: $CONFIGURED_GIT_BRANCH"
+else
     remote_head=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD || true)
     if [ -z "$remote_head" ]; then
-        git remote set-head origin --auto >/dev/null
+        if ! git remote set-head origin --auto >/dev/null; then
+            echo "Could not determine origin's default branch." >&2
+            exit 1
+        fi
         remote_head=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD || true)
     fi
     case "$remote_head" in
-        origin/*) CONFIGURED_GIT_BRANCH="${remote_head#origin/}" ;;
+        origin/*) default_branch="${remote_head#origin/}" ;;
         *)
             echo "Could not determine origin's default branch." >&2
             exit 1
             ;;
     esac
-fi
 
-if ! git fetch --quiet --no-tags origin "+refs/heads/$CONFIGURED_GIT_BRANCH:refs/remotes/origin/$CONFIGURED_GIT_BRANCH"; then
-    echo "Could not fetch branch '$CONFIGURED_GIT_BRANCH' from origin." >&2
-    exit 1
-fi
-if ! git checkout --quiet -B "$CONFIGURED_GIT_BRANCH" "refs/remotes/origin/$CONFIGURED_GIT_BRANCH"; then
-    echo "Could not check out branch '$CONFIGURED_GIT_BRANCH'." >&2
-    exit 1
+    if ! git fetch --quiet --no-tags origin "+refs/heads/$default_branch:refs/remotes/origin/$default_branch"; then
+        echo "Could not fetch origin's default branch '$default_branch'." >&2
+        exit 1
+    fi
+    if git show-ref --verify --quiet "refs/heads/$CONFIGURED_GIT_BRANCH"; then
+        git checkout --quiet "$CONFIGURED_GIT_BRANCH"
+    else
+        git checkout --quiet -b "$CONFIGURED_GIT_BRANCH" "refs/remotes/origin/$default_branch"
+    fi
+    if ! git push --set-upstream origin "$CONFIGURED_GIT_BRANCH"; then
+        echo "Could not push new branch '$CONFIGURED_GIT_BRANCH' to origin." >&2
+        exit 1
+    fi
+    echo "Created and pushed branch: $CONFIGURED_GIT_BRANCH"
 fi
 
 mkdir -p "$(dirname "$GIT_BRANCH_FILE")"
@@ -77,8 +97,6 @@ printf '%s\n' "$CONFIGURED_GIT_BRANCH" > "$GIT_BRANCH_FILE"
 chmod 644 "$GIT_BRANCH_FILE"
 if [ -n "$REQUESTED_GIT_BRANCH" ]; then
     echo "Selected Git branch: $CONFIGURED_GIT_BRANCH"
-else
-    echo "Following Git branch: $CONFIGURED_GIT_BRANCH"
 fi
 
 chown -R root:root "$REPO_DIR"

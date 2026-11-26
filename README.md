@@ -92,13 +92,16 @@ To have this server follow a specific branch, pass its name during installation:
 sudo ./install.sh --branch production
 ```
 
-Each server fetches its configured branch every five minutes and deploys new
-commits automatically. You can use a different branch per server. The branch
-is stored locally in `/etc/polysquid/git-branch`; rerun the installer with a
-different `--branch` to switch branches. Without an explicit branch, the
-installer selects the repository's default branch. Tags are not fetched or
-used. On an existing installation, rerun the installer with `--branch` to
-install the branch-only updater; any old `/etc/polysquid/git-ref` setting is
+By default, the installer uses the short hostname as the branch name. If that
+branch does not exist on `origin`, it creates it from the repository's default
+branch and pushes it. This requires Git push access from the server. If the
+branch already exists, the installer checks it out without overwriting it on
+the remote. Use `--branch` to override the hostname-derived name.
+
+The server fetches its branch every five minutes and deploys new commits
+automatically. Its branch is stored locally in `/etc/polysquid/git-branch`.
+Tags are not fetched or used. On an existing installation, rerun the installer
+to install the branch-only updater; any old `/etc/polysquid/git-ref` setting is
 ignored.
 
 ### 2. Configure
